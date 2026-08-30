@@ -4,7 +4,7 @@ import datetime
 # إعدادات الصفحة
 st.set_page_config(page_title="دار الخليفي | المنيو اليومي", page_icon="🍲", layout="centered")
 
-# CSS الواجهة بالتصميم المغربي الأنيق
+# CSS الواجهة
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap');
@@ -40,70 +40,56 @@ st.markdown("""
         margin-top: 20px;
     }
     
-    /* تصميم بطاقة الستوري */
-    .story-card {
-        width: 100%;
-        max-width: 380px;
-        margin: 0 auto;
+    /* تنسيق كارت الستوري النظيف */
+    .story-container {
         background: #8B0000;
+        padding: 25px;
         border-radius: 20px;
-        padding: 20px;
+        border: 3px solid #D4AF37;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        max-width: 400px;
+        margin: 0 auto;
+    }
+    .story-title {
         color: white;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-        border: 2px solid #D4AF37;
-    }
-    .story-header {
         text-align: center;
-        border-bottom: 2px dashed #D4AF37;
-        padding-bottom: 12px;
-        margin-bottom: 15px;
-    }
-    .story-header h2 {
-        color: #FFFFFF !important;
+        font-size: 26px;
         font-weight: 900;
-        margin: 0;
-        font-size: 24px;
+        margin-bottom: 5px;
     }
-    .story-header p {
+    .story-sub {
         color: #D4AF37;
-        margin: 5px 0 0 0;
+        text-align: center;
+        font-size: 16px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        border-bottom: 1px dashed #D4AF37;
+        padding-bottom: 10px;
+    }
+    .story-dish {
+        background: white;
+        color: #1A1A1A;
+        padding: 10px 15px;
+        border-radius: 10px;
+        margin-bottom: 8px;
         font-weight: 700;
         font-size: 15px;
-    }
-    .story-item {
-        background: rgba(255, 255, 255, 0.95);
-        color: #1A1A1A;
-        padding: 10px 12px;
-        border-radius: 8px;
-        margin-bottom: 8px;
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        font-weight: 700;
-        font-size: 14px;
     }
-    .story-item .price {
+    .story-dish-price {
         color: #8B0000;
         background: #f0e6e6;
-        padding: 3px 8px;
-        border-radius: 6px;
-        font-size: 13px;
+        padding: 2px 8px;
+        border-radius: 5px;
     }
-    .story-footer {
+    .story-footer-text {
+        color: white;
         text-align: center;
         margin-top: 15px;
-        padding-top: 12px;
+        font-size: 14px;
         border-top: 1px dashed rgba(255,255,255,0.3);
-        font-size: 13px;
-    }
-    .story-footer .phone {
-        background: #25D366;
-        color: white;
-        padding: 6px 12px;
-        border-radius: 15px;
-        font-weight: bold;
-        display: inline-block;
-        margin-top: 6px;
+        padding-top: 10px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -199,7 +185,7 @@ else:
     dishes = st.session_state.custom_dishes.get(selected_day, [])
 
     if not dishes:
-        st.info("لا توجد أطباق مسجلة لهذا اليوم بعد. يمكنك إضافتها من القائمة الجانبية.")
+        st.info("لا توجد أطباق مسجلة لهذا اليوم بعد.")
     else:
         for idx, dish in enumerate(dishes):
             col1, col2 = st.columns([3, 1])
@@ -210,7 +196,6 @@ else:
                     </div>
                 """, unsafe_allow_html=True)
             with col2:
-                # تفعيل وتنسيق حالة التوفر
                 is_avail = st.checkbox("متوفر", value=dish.get('available', True), key=f"v_{selected_day}_{idx}")
                 st.session_state.custom_dishes[selected_day][idx]['available'] = is_avail
                 
@@ -232,59 +217,43 @@ else:
         </div>
     """, unsafe_allow_html=True)
 
-    # أزرار المشاركة والطلب
+    # زر الواتساب المباشر
     st.write("---")
     st.markdown(f"""
         <a href="https://wa.me/{phone_number}?text=سلام%20دار%20الخليفي،%20بغيت%20نطلب%20من%20المنيو" target="_blank">
-            <button style="background-color: #25D366; color: white; padding: 14px; border: none; border-radius: 10px; font-size: 18px; width: 100%; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <button style="background-color: #25D366; color: white; padding: 14px; border: none; border-radius: 10px; font-size: 18px; width: 100%; font-weight: bold; cursor: pointer;">
                 📱 اضغط هنا للطلب المباشر عبر الواتساب (0775978088)
             </button>
         </a>
     """, unsafe_allow_html=True)
 
-    # عرض كارت الستوري الجاهزة للتصوير
+    # عرض بطاقة الستوري الجاهزة
     st.write("---")
-    st.subheader("📱 بطاقة الستوري للإنستغرام والواتساب")
-    st.caption("أي تغيير تديره الفوق كيتعدل هنا فـ الحين. خذ سكرين شوت وبارطاجيها مباشرة:")
+    st.subheader("📱 بطاقة الستوري (جاهزة للسكرين شوت)")
+    st.caption("هذه البطاقة تتحدث أوتوماتيكياً مع أي طبق تضيفه أو تحذفه. يمكنك أخذ سكرين شوت لها مباشرة:")
     
-    # بناء الأطباق المتوفرة فقط داخل الستوري
-    dishes_html = ""
+    # رأس البطاقة
+    st.markdown(f"""
+        <div class='story-container'>
+            <div class='story-title'>مطعم دار الخليفي 🍲</div>
+            <div class='story-sub'>قائمة أطباق يوم {selected_day}</div>
+    """, unsafe_allow_html=True)
+    
+    # الأطباق المتوفرة فقط
     for d in dishes:
         if d.get('available', True):
-            dishes_html += f"""
-            <div class='story-item'>
-                <span>{d['name']}</span>
-                <span class='price'>{d['price']}</span>
-            </div>
-            """
+            st.markdown(f"""
+                <div class='story-dish'>
+                    <span>{d['name']}</span>
+                    <span class='story-dish-price'>{d['price']}</span>
+                </div>
+            """, unsafe_allow_html=True)
             
-    # كارت الستوري المصحح
+    # أسفل البطاقة
     st.markdown(f"""
-        <div class='story-card'>
-            <div class='story-header'>
-                <h2>مطعم دار الخليفي 🍲</h2>
-                <p>قائمة أطباق يوم {selected_day}</p>
-            </div>
-            <div class='story-body'>
-                {dishes_html}
-            </div>
-            <div class='story-footer'>
-                <div>📍 مكناس - الزيتون</div>
-                <div class='phone'>📱 للطلب: 0775978088</div>
+            <div class='story-footer-text'>
+                📍 مكناس - الزيتون<br>
+                <b>📱 للطلب المباشر: 0775978088</b>
             </div>
         </div>
     """, unsafe_allow_html=True)
-    
-    # أدوات مساعدة للبارطاج
-    st.write("")
-    col_a, col_b = st.columns(2)
-    with col_a:
-        st.markdown(f"""
-            <a href="https://api.whatsapp.com/send?text=منيو%20اليوم%20فـ%20مطعم%20دار%20الخليفي%20مكناس%20الزيتون:%20{app_url}" target="_blank">
-                <button style="background-color: #128C7E; color: white; padding: 10px; border: none; border-radius: 8px; width: 100%; font-weight: bold; cursor: pointer;">
-                    📲 بارطاجي الرابط فـ WhatsApp
-                </button>
-            </a>
-        """, unsafe_allow_html=True)
-    with col_b:
-        st.code(app_url, language=None)
