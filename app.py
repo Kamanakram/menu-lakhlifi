@@ -40,14 +40,14 @@ st.markdown("""
         margin-top: 20px;
     }
     
-    /* تصميم بطاقة الستوري الاحترافية */
+    /* تصميم بطاقة الستوري */
     .story-card {
         width: 100%;
-        max-width: 420px;
+        max-width: 380px;
         margin: 0 auto;
         background: #8B0000;
         border-radius: 20px;
-        padding: 25px;
+        padding: 20px;
         color: white;
         box-shadow: 0 10px 25px rgba(0,0,0,0.3);
         border: 2px solid #D4AF37;
@@ -55,54 +55,55 @@ st.markdown("""
     .story-header {
         text-align: center;
         border-bottom: 2px dashed #D4AF37;
-        padding-bottom: 15px;
-        margin-bottom: 20px;
+        padding-bottom: 12px;
+        margin-bottom: 15px;
     }
     .story-header h2 {
         color: #FFFFFF !important;
         font-weight: 900;
         margin: 0;
-        font-size: 26px;
+        font-size: 24px;
     }
     .story-header p {
         color: #D4AF37;
         margin: 5px 0 0 0;
         font-weight: 700;
-        font-size: 16px;
+        font-size: 15px;
     }
     .story-item {
         background: rgba(255, 255, 255, 0.95);
         color: #1A1A1A;
-        padding: 10px 15px;
-        border-radius: 10px;
-        margin-bottom: 10px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        margin-bottom: 8px;
         display: flex;
         justify-content: space-between;
         align-items: center;
         font-weight: 700;
+        font-size: 14px;
     }
     .story-item .price {
         color: #8B0000;
         background: #f0e6e6;
-        padding: 4px 8px;
+        padding: 3px 8px;
         border-radius: 6px;
-        font-size: 14px;
+        font-size: 13px;
     }
     .story-footer {
         text-align: center;
-        margin-top: 20px;
-        padding-top: 15px;
-        border-top: 1px solid rgba(255,255,255,0.2);
-        font-size: 14px;
+        margin-top: 15px;
+        padding-top: 12px;
+        border-top: 1px dashed rgba(255,255,255,0.3);
+        font-size: 13px;
     }
     .story-footer .phone {
         background: #25D366;
         color: white;
-        padding: 8px 15px;
-        border-radius: 20px;
+        padding: 6px 12px;
+        border-radius: 15px;
         font-weight: bold;
         display: inline-block;
-        margin-top: 8px;
+        margin-top: 6px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -111,42 +112,42 @@ st.markdown("""
 if 'custom_dishes' not in st.session_state:
     st.session_state.custom_dishes = {
         "الإثنين": [
-            {"name": "ربع دجاج معمر بلافيرميسيل + سلطة", "price": "35 درهم"},
-            {"name": "دجاجة معمرة بلافيرميسيل + سلطة", "price": "140 درهم"},
-            {"name": "ربع دجاج بالدغميرة", "price": "35 درهم"},
-            {"name": "دجاجة بالدغميرة", "price": "120 درهم"},
-            {"name": "طاجين اللحم بالبرقوق", "price": "40 درهم"},
-            {"name": "سلطة زعلوك", "price": "10 دراهم"},
-            {"name": "سلطة خيزو مشرمل", "price": "10 دراهم"}
+            {"name": "ربع دجاج معمر بلافيرميسيل + سلطة", "price": "35 درهم", "available": True},
+            {"name": "دجاجة معمرة بلافيرميسيل + سلطة", "price": "140 درهم", "available": True},
+            {"name": "ربع دجاج بالدغميرة", "price": "35 درهم", "available": True},
+            {"name": "دجاجة بالدغميرة", "price": "120 درهم", "available": True},
+            {"name": "طاجين اللحم بالبرقوق", "price": "40 درهم", "available": True},
+            {"name": "سلطة زعلوك", "price": "10 دراهم", "available": True},
+            {"name": "سلطة خيزو مشرمل", "price": "10 دراهم", "available": True}
         ],
         "الثلاثاء": [
-            {"name": "سفة مدفونة بالدجاج", "price": "35 درهم"},
-            {"name": "طاجين سردين كواري", "price": "30 درهم"},
-            {"name": "ربع دجاج بالدغميرة", "price": "35 درهم"},
-            {"name": "دجاجة بالدغميرة", "price": "120 درهم"},
-            {"name": "طاجين اللحم بالبرقوق", "price": "40 درهم"}
+            {"name": "سفة مدفونة بالدجاج", "price": "35 درهم", "available": True},
+            {"name": "طاجين سردين كواري", "price": "30 درهم", "available": True},
+            {"name": "ربع دجاج بالدغميرة", "price": "35 درهم", "available": True},
+            {"name": "دجاجة بالدغميرة", "price": "120 درهم", "available": True},
+            {"name": "طاجين اللحم بالبرقوق", "price": "40 درهم", "available": True}
         ],
         "الأربعاء": [
-            {"name": "طبق بورماش / الرفيسة بالدجاج", "price": "35 درهم"},
-            {"name": "قصعة الرفيسة بالدجاج", "price": "250 درهم"},
-            {"name": "ربع دجاج بالدغميرة", "price": "35 درهم"}
+            {"name": "طبق بورماش / الرفيسة بالدجاج", "price": "35 درهم", "available": True},
+            {"name": "قصعة الرفيسة بالدجاج", "price": "250 درهم", "available": True},
+            {"name": "ربع دجاج بالدغميرة", "price": "35 درهم", "available": True}
         ],
         "الخميس": [
-            {"name": "ربع دجاج معمر بالمعدنوس + سلطة", "price": "35 درهم"},
-            {"name": "سفة مدفونة بالدجاج", "price": "35 درهم"},
-            {"name": "طاجين سردين كواري", "price": "30 درهم"},
-            {"name": "ربع دجاج بالدغميرة", "price": "35 درهم"}
+            {"name": "ربع دجاج معمر بالمعدنوس + سلطة", "price": "35 درهم", "available": True},
+            {"name": "سفة مدفونة بالدجاج", "price": "35 درهم", "available": True},
+            {"name": "طاجين سردين كواري", "price": "30 درهم", "available": True},
+            {"name": "ربع دجاج بالدغميرة", "price": "35 درهم", "available": True}
         ],
         "الجمعة": [
-            {"name": "طبق كسكسو بالدجاج", "price": "35 درهم"},
-            {"name": "طبق كسكسو باللحم", "price": "45 درهم"},
-            {"name": "قصعة كسكسو بالدجاج", "price": "250 درهم"}
+            {"name": "طبق كسكسو بالدجاج", "price": "35 درهم", "available": True},
+            {"name": "طبق كسكسو باللحم", "price": "45 درهم", "available": True},
+            {"name": "قصعة كسكسو بالدجاج", "price": "250 درهم", "available": True}
         ],
         "السبت": [
-            {"name": "ميني بسطيلة دجاج", "price": "15 درهم"},
-            {"name": "ميني بسطيلة حوت", "price": "20 درهم"},
-            {"name": "بسطيلة دجاج (شخصين)", "price": "99 درهم"},
-            {"name": "بسطيلة حوت (شخصين)", "price": "159 درهم"}
+            {"name": "ميني بسطيلة دجاج", "price": "15 درهم", "available": True},
+            {"name": "ميني بسطيلة حوت", "price": "20 درهم", "available": True},
+            {"name": "بسطيلة دجاج (شخصين)", "price": "99 درهم", "available": True},
+            {"name": "بسطيلة حوت (شخصين)", "price": "159 درهم", "available": True}
         ]
     }
 
@@ -171,6 +172,7 @@ st.sidebar.title("⚙️ لوحة التحكم")
 selected_day = st.sidebar.selectbox("اختر اليوم للعرض أو التعديل:", days_map, index=now.weekday())
 
 phone_number = "212775978088"
+app_url = "https://menu-lakhlifi-iptwnqbcfs3nbergvdqshg.streamlit.app"
 
 is_sunday = (selected_day == "الأحد")
 manual_closed = st.sidebar.checkbox("🚨 تفعيل وضع العطلة لليوم الحالي", value=is_sunday)
@@ -188,7 +190,7 @@ else:
         if new_dish_name and new_dish_price:
             if selected_day not in st.session_state.custom_dishes:
                 st.session_state.custom_dishes[selected_day] = []
-            st.session_state.custom_dishes[selected_day].append({"name": new_dish_name, "price": new_dish_price})
+            st.session_state.custom_dishes[selected_day].append({"name": new_dish_name, "price": new_dish_price, "available": True})
             st.sidebar.success("تمت الإضافة بنجاح!")
             st.rerun()
 
@@ -208,7 +210,10 @@ else:
                     </div>
                 """, unsafe_allow_html=True)
             with col2:
-                st.checkbox("متوفر", value=True, key=f"v_{selected_day}_{idx}")
+                # تفعيل وتنسيق حالة التوفر
+                is_avail = st.checkbox("متوفر", value=dish.get('available', True), key=f"v_{selected_day}_{idx}")
+                st.session_state.custom_dishes[selected_day][idx]['available'] = is_avail
+                
                 if st.button("حذف 🗑️", key=f"d_{selected_day}_{idx}"):
                     st.session_state.custom_dishes[selected_day].pop(idx)
                     st.rerun()
@@ -227,7 +232,7 @@ else:
         </div>
     """, unsafe_allow_html=True)
 
-    # زر الواتساب المباشر
+    # أزرار المشاركة والطلب
     st.write("---")
     st.markdown(f"""
         <a href="https://wa.me/{phone_number}?text=سلام%20دار%20الخليفي،%20بغيت%20نطلب%20من%20المنيو" target="_blank">
@@ -239,24 +244,26 @@ else:
 
     # عرض كارت الستوري الجاهزة للتصوير
     st.write("---")
-    st.subheader("📱 بطاقة الستوري الجاهزة للنشر (Story Card)")
-    st.caption("هذه البطاقة مصممة بمقاسات الأستوري العصرية. يمكنك أخذ سكرين شوت لها مباشرة ونشرها:")
+    st.subheader("📱 بطاقة الستوري للإنستغرام والواتساب")
+    st.caption("أي تغيير تديره الفوق كيتعدل هنا فـ الحين. خذ سكرين شوت وبارطاجيها مباشرة:")
     
-    # بناء العناصر لبطاقة الستوري
+    # بناء الأطباق المتوفرة فقط داخل الستوري
     dishes_html = ""
     for d in dishes:
-        dishes_html += f"""
-        <div class='story-item'>
-            <span>{d['name']}</span>
-            <span class='price'>{d['price']}</span>
-        </div>
-        """
-        
+        if d.get('available', True):
+            dishes_html += f"""
+            <div class='story-item'>
+                <span>{d['name']}</span>
+                <span class='price'>{d['price']}</span>
+            </div>
+            """
+            
+    # كارت الستوري المصحح
     st.markdown(f"""
         <div class='story-card'>
             <div class='story-header'>
                 <h2>مطعم دار الخليفي 🍲</h2>
-                <p>أطباق يوم {selected_day}</p>
+                <p>قائمة أطباق يوم {selected_day}</p>
             </div>
             <div class='story-body'>
                 {dishes_html}
@@ -267,3 +274,17 @@ else:
             </div>
         </div>
     """, unsafe_allow_html=True)
+    
+    # أدوات مساعدة للبارطاج
+    st.write("")
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.markdown(f"""
+            <a href="https://api.whatsapp.com/send?text=منيو%20اليوم%20فـ%20مطعم%20دار%20الخليفي%20مكناس%20الزيتون:%20{app_url}" target="_blank">
+                <button style="background-color: #128C7E; color: white; padding: 10px; border: none; border-radius: 8px; width: 100%; font-weight: bold; cursor: pointer;">
+                    📲 بارطاجي الرابط فـ WhatsApp
+                </button>
+            </a>
+        """, unsafe_allow_html=True)
+    with col_b:
+        st.code(app_url, language=None)
