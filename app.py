@@ -4,7 +4,7 @@ import datetime
 # إعدادات الصفحة
 st.set_page_config(page_title="دار الخليفي | المنيو اليومي", page_icon="🍲", layout="centered")
 
-# CSS لتجميل الواجهة بشكل تفاعلي وأنيق
+# CSS الواجهة بالتصميم المغربي الأنيق
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap');
@@ -23,30 +23,20 @@ st.markdown("""
         margin-bottom: 20px;
         box-shadow: 0 4px 10px rgba(0,0,0,0.15);
     }
-    .time-badge {
-        background-color: #FFD700;
-        color: #8B0000;
-        padding: 5px 12px;
-        border-radius: 20px;
-        font-weight: bold;
-        font-size: 14px;
-        display: inline-block;
-        margin-top: 8px;
-    }
     .dish-card {
         background-color: white;
-        padding: 15px;
-        border-radius: 12px;
-        border-right: 6px solid #8B0000;
-        margin-bottom: 12px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        padding: 12px 15px;
+        border-radius: 10px;
+        border-right: 5px solid #8B0000;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     .delivery-box {
         background-color: #eef7ee;
         padding: 15px;
-        border-radius: 12px;
+        border-radius: 10px;
         border: 1px solid #c2e0c2;
-        margin-top: 25px;
+        margin-top: 20px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -101,20 +91,22 @@ today_name = days_map[now.weekday()]
 current_time_str = now.strftime("%H:%M")
 current_date_str = now.strftime("%Y-%m-%d")
 
-# الهيدر المزين
+# الهيدر
 st.markdown(f"""
     <div class='main-header'>
         <h1>مطعم دار الخليفي 🍲</h1>
-        <p style='font-size: 16px; margin: 0;'>مكناس - الزيتون | قائمة الطعام والطلبات اليومية</p>
-        <div class='time-badge'>⏰ التحديث: {today_name} {current_date_str} | الساعة {current_time_str}</div>
+        <p style='margin: 0; font-size: 16px;'>مكناس - الزيتون | المنيو اليومي والطلبات</p>
+        <small>📅 {today_name} {current_date_str} | ⏰ الساعة {current_time_str}</small>
     </div>
 """, unsafe_allow_html=True)
 
-# لوحة التحكم الجانبية
-st.sidebar.title("⚙️ لوحة تحكم المنيو")
+# التحكم الجانبي
+st.sidebar.title("⚙️ لوحة التحكم")
 selected_day = st.sidebar.selectbox("اختر اليوم للعرض أو التعديل:", days_map, index=now.weekday())
 
-# خيار العطلة الاستثنائية أو عطلة الأحد
+# نمرة الواتساب المباشرة للمطعم
+phone_number = "212775978088"
+
 is_sunday = (selected_day == "الأحد")
 manual_closed = st.sidebar.checkbox("🚨 تفعيل وضع العطلة للفيوم الحالي", value=is_sunday)
 
@@ -123,21 +115,20 @@ if manual_closed:
 else:
     # إضافة طبق جديد
     st.sidebar.markdown("---")
-    st.sidebar.subheader("➕ إضافة طبق جديد للليوم:")
+    st.sidebar.subheader("➕ إضافة طبق جديد:")
     new_dish_name = st.sidebar.text_input("اسم الطبق:")
     new_dish_price = st.sidebar.text_input("الثمن (مثال: 40 درهم):")
     
-    if st.sidebar.button("حفظ الطبق فـ المنيو"):
+    if st.sidebar.button("حفظ الطبق"):
         if new_dish_name and new_dish_price:
             if selected_day not in st.session_state.custom_dishes:
                 st.session_state.custom_dishes[selected_day] = []
             st.session_state.custom_dishes[selected_day].append({"name": new_dish_name, "price": new_dish_price})
-            st.sidebar.success(f"تمت إضافة {new_dish_name} بنجاح!")
-        else:
-            st.sidebar.warning(" المرجو كتابة الاسم والثمن.")
+            st.sidebar.success("تمت الإضافة بنجاح!")
+            st.rerun()
 
     # عرض الأطباق
-    st.subheader(f"🍽️ قائمة أطباق يوم {selected_day}:")
+    st.subheader(f"🍽️ أطباق يوم {selected_day}:")
     dishes = st.session_state.custom_dishes.get(selected_day, [])
 
     if not dishes:
@@ -148,37 +139,35 @@ else:
             with col1:
                 st.markdown(f"""
                     <div class='dish-card'>
-                        <span style='font-size: 18px; font-weight: bold;'>{dish['name']}</span> 
-                        <br><span style='color: #8B0000; font-weight: bold;'>{dish['price']}</span>
+                        <b>{dish['name']}</b> — <span style='color: #8B0000; font-weight: bold;'>{dish['price']}</span>
                     </div>
                 """, unsafe_allow_html=True)
             with col2:
-                available = st.checkbox("متوفر 🟢", value=True, key=f"avail_{selected_day}_{idx}")
-                if st.button("حذف 🗑️", key=f"del_{selected_day}_{idx}"):
+                st.checkbox("متوفر", value=True, key=f"v_{selected_day}_{idx}")
+                if st.button("حذف 🗑️", key=f"d_{selected_day}_{idx}"):
                     st.session_state.custom_dishes[selected_day].pop(idx)
                     st.rerun()
 
-    # التوصيل بأسعار دقيقة
+    # أسعار التوصيل المعدلة بـ رياض تولال
     st.markdown("""
         <div class='delivery-box'>
-            <h3 style='color: #2e7d32; margin-top: 0;'>🛵 خدمات وأسعار التوصيل (حسب الأسبقية)</h3>
-            <ul style='font-size: 15px; line-height: 1.8;'>
+            <h4 style='color: #2e7d32; margin: 0;'>🛵 أسعار التوصيل (حسب الأسبقية):</h4>
+            <ul style='font-size: 14px; margin-top: 5px; line-height: 1.8;'>
                 <li><b>منطقة الزيتون:</b> 5 دراهم</li>
                 <li><b>المناطق القريبة من الزيتون:</b> 10 دراهم</li>
                 <li><b>حمرية والمناطق المجاورة:</b> 15 درهم</li>
-                <li><b>البساتين، التلال، البريدية:</b> 20 درهم</li>
+                <li><b>البساتين، البريدية، رياض تولال:</b> 20 درهم</li>
                 <li><b>🚀 التوصيل السريع (VIP للمزروبين):</b> ما بين 15 و 25 درهم (حسب الموزع)</li>
             </ul>
         </div>
     """, unsafe_allow_html=True)
 
-    # زر الواتساب
+    # زر الواتساب المباشر
     st.write("---")
-    whatsapp_number = "212600000000"  # ضع رقم الهاتف هنا
     st.markdown(f"""
-        <a href="https://wa.me/{whatsapp_number}?text=سلام%20دار%20الخليفي،%20بغيت%20نطلب%20من%20المنيو" target="_blank">
+        <a href="https://wa.me/{phone_number}?text=سلام%20دار%20الخليفي،%20بغيت%20نطلب%20من%20المنيو" target="_blank">
             <button style="background-color: #25D366; color: white; padding: 14px; border: none; border-radius: 10px; font-size: 18px; width: 100%; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                📱 اضغط هنا للطلب المباشر عبر الواتساب
+                📱 اضغط هنا للطلب المباشر عبر الواتساب (0775978088)
             </button>
         </a>
     """, unsafe_allow_html=True)
