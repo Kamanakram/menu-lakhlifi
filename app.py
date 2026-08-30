@@ -1,5 +1,5 @@
 import streamlit as st
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import datetime
 import os
 import io
@@ -290,121 +290,212 @@ def rounded_rectangle(draw, xy, radius, fill=None, outline=None, width=1):
     draw.rounded_rectangle(xy, radius=radius, fill=fill, outline=outline, width=width)
 
 
-def fit_text(draw, text, font, max_width):
-    """يقلص النص تدريجياً مع علامة … إذا تجاوز العرض المسموح."""
-    trimmed = text
-    while draw.textbbox((0, 0), trimmed, font=font)[2] > max_width and len(trimmed) > 6:
-        trimmed = trimmed[:-1].rstrip() + "…"
-    return trimmed
+def wrap_dish_name(draw, text, font, max_width, max_lines=2):
+    """يقسم اسم الطبق إلى سطرين عند الحاجة بدل تصغير الخط أو الحذف بعلامة …"""
+    words = text.split(" ")
+    lines = []
+    current = ""
+    for word in words:
+        candidate = f"{current} {word}".strip()
+        candidate_width = draw.textbbox((0, 0), candidate, font=font)[2]
+        if candidate_width <= max_width or not current:
+            current = candidate
+        else:
+            lines.append(current)
+            current = word
+    if current:
+        lines.append(current)
+
+    if len(lines) > max_lines:
+        head = lines[: max_lines - 1]
+        tail = " ".join(lines[max_lines - 1:])
+        lines = head + [tail]
+
+    return lines
+
+
+def chunk_dishes_for_stories(dishes, max_per_story=6, single_story_limit=8):
+    """
+    يقرر عدد صور الـStory اللازمة:
+    - حتى 8 أطباق → Story واحدة (بدون التضحية بوضوح النص).
+    - أكثر من 8 → يوزَّع المنيو على عدة Stories بشكل متوازن (5-6 أطباق لكل واحدة كحد أقصى)
+      حتى يبقى الخط كبيراً ومقروءاً دائماً.
+    """
+    count = len(dishes)
+    if count == 0:
+        return [[]]
+    if count <= single_story_limit:
+        return [dishes]
+
+    num_stories = -(-count // max_per_story)  # ceil division
+    base_size = count // num_stories
+    remainder = count % num_stories
+
+    chunks = []
+    idx = 0
+    for i in range(num_stories):
+        size = base_size + (1 if i < remainder else 0)
+        chunks.append(dishes[idx: idx + size])
+        idx += size
+    return chunks
+
+
+def get_dish_font_sizes(count):
+    """أحجام الخط حسب عدد الأطباق في نفس الـStory — لا تنزل أبداً تحت حد القراءة الواضحة."""
+    if count <= 3:
+        return {"name": 40, "price": 36, "gap": 34}
+    elif count <= 5:
+        return {"name": 38, "price": 34, "gap": 24}
+    else:
+        return {"name": 32, "price": 28, "gap": 16}
+
 
 # ============================================================
-# 6. توليد صورة الـStory (PNG حقيقية 1080×1920)
+# 6. توليد صورة/صور الـStory (PNG حقيقية 1080×1920 لكل صورة)
 # ============================================================
 
-def create_story_image(restaurant_name, location, day_name, phone, dishes):
+def render_story_page(restaurant_name, location, day_name, phone, dishes, page_index, total_pages):
     WIDTH, HEIGHT = 1080, 1920
-    image = Image.new("RGB", (WIDTH, HEIGHT), "#4b0000")
-    draw = ImageDraw.Draw(image)
+    base = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 255))
+    draw = ImageDraw.Draw(base)
 
     # خلفية متدرجة
-    top_color, bottom_color = (44, 0, 0), (130, 12, 12)
+    top_color, bottom_color = (40, 0, 0), (128, 14, 14)
     for y in range(HEIGHT):
         ratio = y / HEIGHT
         r = int(top_color[0] + (bottom_color[0] - top_color[0]) * ratio)
         g = int(top_color[1] + (bottom_color[1] - top_color[1]) * ratio)
         b = int(top_color[2] + (bottom_color[2] - top_color[2]) * ratio)
-        draw.line([(0, y), (WIDTH, y)], fill=(r, g, b))
+        draw.line([(0, y), (WIDTH, y)], fill=(r, g, b, 255))
 
     # زخرفة دائرية
-    draw.ellipse((-160, -160, 330, 330), outline="#D4AF37", width=4)
-    draw.ellipse((850, 1600, 1250, 2000), outline="#D4AF37", width=4)
+    draw.ellipse((-170, -170, 340, 340), outline=(212, 175, 55, 255), width=4)
+    draw.ellipse((840, 1610, 1250, 2010), outline=(212, 175, 55, 255), width=4)
 
-    # إطار ذهبي
-    rounded_rectangle(draw, (25, 25, WIDTH - 25, HEIGHT - 25), 45, outline="#D4AF37", width=8)
+    # إطار ذهبي مزدوج (لمسة Canva)
+    rounded_rectangle(draw, (25, 25, WIDTH - 25, HEIGHT - 25), 45, outline=(212, 175, 55, 255), width=8)
+    rounded_rectangle(draw, (38, 38, WIDTH - 38, HEIGHT - 38), 38, outline=(212, 175, 55, 110), width=2)
 
-    # خطوط
-    logo_font = load_font(64, bold=True)
-    location_font = load_font(34, bold=True)
-    day_font = load_font(46, bold=True)
-    footer_font = load_font(30, bold=True)
+    # خطوط الرأس (ضمن الحدود الدنيا/القصوى المطلوبة)
+    logo_font = load_font(68, bold=True)          # 50-75px
+    location_font = load_font(30, bold=True)      # 25-32px
+    day_font = load_font(48, bold=True)           # 40-55px
+    footer_font = load_font(32, bold=True)        # 28-35px
 
-    draw_centered_text(draw, "🍲 " + restaurant_name, WIDTH // 2, 100, logo_font, "#FFFFFF")
-    draw_centered_text(draw, location, WIDTH // 2, 182, location_font, "#E7C85C")
-    draw.line([(130, 262), (950, 262)], fill="#D4AF37", width=3)
-    draw_centered_text(draw, f"منيو يوم {day_name}", WIDTH // 2, 315, day_font, "#FFFFFF")
+    draw_centered_text(draw, "🍲 " + restaurant_name, WIDTH // 2, 92, logo_font, (255, 255, 255, 255))
+    draw_centered_text(draw, location, WIDTH // 2, 176, location_font, (231, 200, 92, 255))
 
-    # منطقة المنيو — Auto Layout حسب عدد الأطباق
+    # فاصل مزخرف بمعينة ذهبية في المنتصف
+    divider_y = 250
+    draw.line([(150, divider_y), (478, divider_y)], fill=(212, 175, 55, 255), width=3)
+    draw.line([(602, divider_y), (930, divider_y)], fill=(212, 175, 55, 255), width=3)
+    dcx, dcy, dr = WIDTH // 2, divider_y, 10
+    draw.polygon(
+        [(dcx, dcy - dr), (dcx + dr, dcy), (dcx, dcy + dr), (dcx - dr, dcy)],
+        fill=(212, 175, 55, 255)
+    )
+
+    title_text = f"منيو يوم {day_name}" if page_index == 0 else f"تكملة منيو {day_name}"
+    draw_centered_text(draw, title_text, WIDTH // 2, 296, day_font, (255, 255, 255, 255))
+
+    menu_top = 400
+    if total_pages > 1:
+        page_tag_font = load_font(24, bold=True)
+        draw_centered_text(
+            draw, f"({page_index + 1} / {total_pages})", WIDTH // 2, 356, page_tag_font, (231, 200, 92, 255)
+        )
+        menu_top = 410
+
     menu_left, menu_right = 75, 1005
-    menu_top, menu_bottom = 415, 1575
+    menu_bottom = 1555
     count = len(dishes)
 
     if count == 0:
-        empty_font = load_font(40, bold=True)
-        draw_centered_text(draw, "لا توجد أطباق متوفرة اليوم", WIDTH // 2, 950, empty_font, "#FFFFFF")
+        empty_font = load_font(38, bold=True)
+        draw_centered_text(draw, "لا توجد أطباق متوفرة اليوم", WIDTH // 2, 950, empty_font, (255, 255, 255, 255))
     else:
-        if count <= 4:
-            gap, name_size, price_size = 26, 36, 30
-        elif count <= 6:
-            gap, name_size, price_size = 20, 32, 27
-        elif count <= 8:
-            gap, name_size, price_size = 16, 28, 24
-        elif count <= 11:
-            gap, name_size, price_size = 12, 24, 21
-        elif count <= 14:
-            gap, name_size, price_size = 9, 20, 18
-        elif count <= 18:
-            gap, name_size, price_size = 7, 17, 16
-        else:
-            gap, name_size, price_size = 5, 14, 13
+        sizes = get_dish_font_sizes(count)
+        gap = sizes["gap"]
+        name_font = load_font(sizes["name"], bold=True)
+        price_font = load_font(sizes["price"], bold=True)
 
         available_height = (menu_bottom - menu_top) - gap * (count - 1)
-        item_height = max(available_height / count, 24)  # لا تقل الأعمدة عن حد أدنى معقول
+        item_height = available_height / count
 
-        # إعادة حساب الفجوة إذا فرض الحد الأدنى تجاوز المساحة (حماية إضافية ضد التداخل)
-        total_needed = item_height * count + gap * (count - 1)
-        if total_needed > (menu_bottom - menu_top):
-            item_height = (menu_bottom - menu_top - gap * (count - 1)) / count
+        # ---- طبقة ظل ناعمة لكل الكروت دفعة واحدة (لمسة Canva احترافية) ----
+        shadow_layer = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
+        shadow_draw = ImageDraw.Draw(shadow_layer)
+        y = menu_top
+        for _ in dishes:
+            rounded_rectangle(
+                shadow_draw,
+                (menu_left, int(y + 9), menu_right, int(y + item_height + 9)),
+                20,
+                fill=(0, 0, 0, 90)
+            )
+            y += item_height + gap
+        shadow_layer = shadow_layer.filter(ImageFilter.GaussianBlur(10))
+        base = Image.alpha_composite(base, shadow_layer)
+        draw = ImageDraw.Draw(base)
 
-        name_font = load_font(name_size, bold=True)
-        price_font = load_font(price_size, bold=True)
-
+        # ---- الكروت الفعلية + النصوص ----
+        max_name_width = 655
         y = menu_top
         for dish in dishes:
-            card_bottom = min(y + item_height, menu_bottom)
-            rounded_rectangle(draw, (menu_left, int(y), menu_right, int(card_bottom)), 18, fill="#FFFFFF")
+            rounded_rectangle(draw, (menu_left, int(y), menu_right, int(y + item_height)), 20, fill=(255, 255, 255, 255))
 
-            badge_width = 178
-            badge_height = max(20, min(66, int(item_height - 14)))
-            badge_x1 = 92
+            badge_width = 190
+            badge_height = max(30, min(74, int(item_height - 18)))
+            badge_x1 = 95
             badge_y1 = y + (item_height - badge_height) / 2
             badge_x2 = badge_x1 + badge_width
             badge_y2 = badge_y1 + badge_height
-            rounded_rectangle(draw, (int(badge_x1), int(badge_y1), int(badge_x2), int(badge_y2)), 14, fill="#720000")
+            rounded_rectangle(
+                draw,
+                (int(badge_x1), int(badge_y1), int(badge_x2), int(badge_y2)),
+                15,
+                fill=(114, 0, 0, 255),
+                outline=(212, 175, 55, 255),
+                width=2
+            )
 
             price_bbox = draw.textbbox((0, 0), dish["price"], font=price_font)
             price_w = price_bbox[2] - price_bbox[0]
             price_h = price_bbox[3] - price_bbox[1]
             draw.text(
                 (int(badge_x1 + (badge_width - price_w) / 2), int(badge_y1 + (badge_height - price_h) / 2 - 3)),
-                dish["price"], font=price_font, fill="#FFFFFF"
+                dish["price"], font=price_font, fill=(255, 255, 255, 255)
             )
 
-            dish_name = fit_text(draw, dish["name"], name_font, 685)
-            name_bbox = draw.textbbox((0, 0), dish_name, font=name_font)
-            name_w = name_bbox[2] - name_bbox[0]
-            name_h = name_bbox[3] - name_bbox[1]
-            name_x = 960 - name_w
-            name_y = y + (item_height - name_h) / 2 - 4
-            draw.text((int(name_x), int(name_y)), dish_name, font=name_font, fill="#222222")
+            lines = wrap_dish_name(draw, dish["name"], name_font, max_name_width)
+            line_height = name_font.size + 8
+            total_text_height = line_height * len(lines)
+            text_y = y + (item_height - total_text_height) / 2
+
+            for line in lines:
+                line_bbox = draw.textbbox((0, 0), line, font=name_font)
+                line_w = line_bbox[2] - line_bbox[0]
+                draw.text((960 - line_w, text_y), line, font=name_font, fill=(30, 30, 30, 255))
+                text_y += line_height
 
             y += item_height + gap
 
     # التذييل
-    draw.line([(130, 1685), (950, 1685)], fill="#D4AF37", width=3)
-    draw_centered_text(draw, "📍 مكناس - الزيتون", WIDTH // 2, 1725, footer_font, "#FFFFFF")
-    draw_centered_text(draw, f"📱 للطلب: {phone}", WIDTH // 2, 1785, footer_font, "#FFFFFF")
+    draw.line([(180, 1650), (900, 1650)], fill=(212, 175, 55, 255), width=3)
+    draw_centered_text(draw, "📍 مكناس - الزيتون", WIDTH // 2, 1695, footer_font, (255, 255, 255, 255))
+    draw_centered_text(draw, f"📱 {phone}", WIDTH // 2, 1752, footer_font, (255, 255, 255, 255))
 
-    return image
+    return base.convert("RGB")
+
+
+def generate_story_images(restaurant_name, location, day_name, phone, dishes):
+    """يبني قائمة من صور الـStory (1080×1920 لكل واحدة)، مقسّمة تلقائياً عند الحاجة."""
+    chunks = chunk_dishes_for_stories(dishes)
+    total = len(chunks)
+    return [
+        render_story_page(restaurant_name, location, day_name, phone, chunk, i, total)
+        for i, chunk in enumerate(chunks)
+    ]
 
 # ============================================================
 # 7. Sidebar — لوحة الإدارة
@@ -605,10 +696,10 @@ st.markdown(
 )
 
 # ============================================================
-# 13. توليد بطاقة الـStory
+# 13. توليد بطاقة/بطاقات الـStory
 # ============================================================
 
-story_image = create_story_image(
+story_images = generate_story_images(
     restaurant_name="مطعم دار الخليفي",
     location="مكناس • الزيتون",
     day_name=selected_day,
@@ -616,26 +707,39 @@ story_image = create_story_image(
     dishes=available_dishes
 )
 
-image_buffer = io.BytesIO()
-story_image.save(image_buffer, format="PNG")
-image_bytes = image_buffer.getvalue()
+total_stories = len(story_images)
 
-st.markdown('<div class="story-wrap">', unsafe_allow_html=True)
-story_col_left, story_col_center, story_col_right = st.columns([1, 2, 1])
-with story_col_center:
-    st.image(story_image, use_container_width=True)
-st.markdown("</div>", unsafe_allow_html=True)
+for story_idx, story_image in enumerate(story_images):
+    image_buffer = io.BytesIO()
+    story_image.save(image_buffer, format="PNG")
+    image_bytes = image_buffer.getvalue()
 
-st.markdown("<br>", unsafe_allow_html=True)
-btn_left, btn_center, btn_right = st.columns([1, 2, 1])
-with btn_center:
-    st.download_button(
-        label="📥 تحميل صورة الـStory",
-        data=image_bytes,
-        file_name=f"dar-lakhlifi-{selected_day}.png",
-        mime="image/png",
-        use_container_width=True
-    )
+    st.markdown('<div class="story-wrap">', unsafe_allow_html=True)
+    story_col_left, story_col_center, story_col_right = st.columns([1, 2, 1])
+    with story_col_center:
+        st.image(story_image, use_container_width=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    if total_stories == 1:
+        download_label = "📥 تحميل صورة الـStory"
+        file_name = f"dar-lakhlifi-{selected_day}.png"
+    else:
+        download_label = f"📥 تحميل Story {story_idx + 1}"
+        file_name = f"dar-lakhlifi-{selected_day}-part{story_idx + 1}.png"
+
+    btn_left, btn_center, btn_right = st.columns([1, 2, 1])
+    with btn_center:
+        st.download_button(
+            label=download_label,
+            data=image_bytes,
+            file_name=file_name,
+            mime="image/png",
+            use_container_width=True,
+            key=f"download_story_{story_idx}"
+        )
+
+    if story_idx < total_stories - 1:
+        st.markdown("<br>", unsafe_allow_html=True)
 
 # ============================================================
 # 14. Footer
