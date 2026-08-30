@@ -138,28 +138,16 @@ st.markdown(
     .delivery-line:last-child { border-bottom: none; }
 
     /* STORY SECTION */
-    .story-header {
-        background: linear-gradient(135deg, #260000, #650000);
-        color: white;
-        border-radius: 22px;
-        padding: 24px;
-        margin-top: 28px;
-        margin-bottom: 16px;
-        box-shadow: 0 15px 40px rgba(60,0,0,0.15);
-        border: 1px solid rgba(212,175,55,0.3);
+    .story-wrap {
+        margin-top: 30px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: center;
     }
-    .story-title { font-size: 22px; font-weight: 900; }
-    .story-description { color: #e7ddc9; font-size: 13.5px; margin-top: 6px; }
-
-    .badge-9-16 {
-        background:#fff;
-        border-radius:14px;
-        padding:14px;
-        text-align:center;
-        border:1px solid #ece8df;
-        font-size:13px;
-        color:#666;
-        height: 100%;
+    .story-wrap img {
+        border-radius: 22px;
+        box-shadow: 0 20px 55px rgba(60,0,0,0.25);
+        border: 1px solid rgba(212,175,55,0.35);
     }
 
     /* SIDEBAR */
@@ -620,16 +608,6 @@ st.markdown(
 # 13. توليد بطاقة الـStory
 # ============================================================
 
-st.markdown(
-    """
-    <div class="story-header">
-        <div class="story-title">📱 بطاقة Story</div>
-        <div class="story-description">صورة حقيقية بمقاس 1080 × 1920 جاهزة للنشر في Instagram Story وWhatsApp Status.</div>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
 story_image = create_story_image(
     restaurant_name="مطعم دار الخليفي",
     location="مكناس • الزيتون",
@@ -638,16 +616,19 @@ story_image = create_story_image(
     dishes=available_dishes
 )
 
-st.image(story_image, width=540)
-
 image_buffer = io.BytesIO()
 story_image.save(image_buffer, format="PNG")
 image_bytes = image_buffer.getvalue()
 
-st.markdown("<br>", unsafe_allow_html=True)
-download_col, info_col = st.columns([1, 1])
+st.markdown('<div class="story-wrap">', unsafe_allow_html=True)
+story_col_left, story_col_center, story_col_right = st.columns([1, 2, 1])
+with story_col_center:
+    st.image(story_image, use_container_width=True)
+st.markdown("</div>", unsafe_allow_html=True)
 
-with download_col:
+st.markdown("<br>", unsafe_allow_html=True)
+btn_left, btn_center, btn_right = st.columns([1, 2, 1])
+with btn_center:
     st.download_button(
         label="📥 تحميل صورة الـStory",
         data=image_bytes,
@@ -655,16 +636,6 @@ with download_col:
         mime="image/png",
         use_container_width=True
     )
-
-with info_col:
-    st.markdown('<div class="badge-9-16">📐 1080 × 1920<br><b>9:16 Story</b></div>', unsafe_allow_html=True)
-
-st.info(
-    "📱 **طريقة النشر:**\n\n"
-    "اضغطي على «تحميل صورة الـStory»، ومن بعد من الهاتف اختاري الصورة من Gallery "
-    "← Share ← WhatsApp Status أو Instagram Story.\n\n"
-    "الصورة نفسها هي اللي غادي تتشارك، ماشي رابط التطبيق."
-)
 
 # ============================================================
 # 14. Footer
