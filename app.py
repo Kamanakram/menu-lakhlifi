@@ -1,17 +1,16 @@
 import streamlit as st
 import datetime
-from PIL import Image, ImageDraw, ImageFont
-import io
 
 # إعدادات الصفحة
 st.set_page_config(page_title="دار الخليفي | المنيو اليومي", page_icon="🍲", layout="centered")
 
-# CSS الواجهة
+# CSS الواجهة بالتصميم المغربي الأنيق
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap');
+    
     html, body, [class*="css"] {
-        font-family: 'Tajawal', sans-serif;
+        font-family: 'Tajawal', sans-serif !important;
         direction: rtl;
         text-align: right;
         background-color: #fdfbf7;
@@ -39,6 +38,71 @@ st.markdown("""
         border-radius: 10px;
         border: 1px solid #c2e0c2;
         margin-top: 20px;
+    }
+    
+    /* تصميم بطاقة الستوري الاحترافية */
+    .story-card {
+        width: 100%;
+        max-width: 420px;
+        margin: 0 auto;
+        background: #8B0000;
+        border-radius: 20px;
+        padding: 25px;
+        color: white;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        border: 2px solid #D4AF37;
+    }
+    .story-header {
+        text-align: center;
+        border-bottom: 2px dashed #D4AF37;
+        padding-bottom: 15px;
+        margin-bottom: 20px;
+    }
+    .story-header h2 {
+        color: #FFFFFF !important;
+        font-weight: 900;
+        margin: 0;
+        font-size: 26px;
+    }
+    .story-header p {
+        color: #D4AF37;
+        margin: 5px 0 0 0;
+        font-weight: 700;
+        font-size: 16px;
+    }
+    .story-item {
+        background: rgba(255, 255, 255, 0.95);
+        color: #1A1A1A;
+        padding: 10px 15px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 700;
+    }
+    .story-item .price {
+        color: #8B0000;
+        background: #f0e6e6;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+    .story-footer {
+        text-align: center;
+        margin-top: 20px;
+        padding-top: 15px;
+        border-top: 1px solid rgba(255,255,255,0.2);
+        font-size: 14px;
+    }
+    .story-footer .phone {
+        background: #25D366;
+        color: white;
+        padding: 8px 15px;
+        border-radius: 20px;
+        font-weight: bold;
+        display: inline-block;
+        margin-top: 8px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -173,38 +237,33 @@ else:
         </a>
     """, unsafe_allow_html=True)
 
-    # دالة إنشاء صورة Story
-    def generate_story_image(day, dishes_list):
-        img = Image.new('RGB', (1080, 1920), color='#8B0000')
-        draw = ImageDraw.Draw(img)
-        
-        # خلفية بطاقة بيضاء
-        draw.rectangle([60, 200, 1020, 1720], fill='white')
-        
-        # نص العنوان (توليد مبسط)
-        draw.text((100, 260), "مطعم دار الخليفي", fill='#8B0000')
-        draw.text((100, 340), f"قائمة أطباق يوم {day}", fill='black')
-        
-        y = 450
-        for item in dishes_list:
-            draw.text((100, y), f"• {item['name']} : {item['price']}", fill='#2B2B2B')
-            y += 80
-            if y > 1500:
-                break
-                
-        draw.text((100, 1580), "للطلب المباشر: 0775978088", fill='#8B0000')
-        
-        buf = io.BytesIO()
-        img.save(buf, format='PNG')
-        return buf.getvalue()
-
-    # زر تحميل صورة Story
+    # عرض كارت الستوري الجاهزة للتصوير
     st.write("---")
-    story_bytes = generate_story_image(selected_day, dishes)
-    st.download_button(
-        label="📸 تحميل المنيو كـ صورة جاهزة للـ Story (1080x1920)",
-        data=story_bytes,
-        file_name=f"menu_{selected_day}.png",
-        mime="image/png",
-        use_container_width=True
-    )
+    st.subheader("📱 بطاقة الستوري الجاهزة للنشر (Story Card)")
+    st.caption("هذه البطاقة مصممة بمقاسات الأستوري العصرية. يمكنك أخذ سكرين شوت لها مباشرة ونشرها:")
+    
+    # بناء العناصر لبطاقة الستوري
+    dishes_html = ""
+    for d in dishes:
+        dishes_html += f"""
+        <div class='story-item'>
+            <span>{d['name']}</span>
+            <span class='price'>{d['price']}</span>
+        </div>
+        """
+        
+    st.markdown(f"""
+        <div class='story-card'>
+            <div class='story-header'>
+                <h2>مطعم دار الخليفي 🍲</h2>
+                <p>أطباق يوم {selected_day}</p>
+            </div>
+            <div class='story-body'>
+                {dishes_html}
+            </div>
+            <div class='story-footer'>
+                <div>📍 مكناس - الزيتون</div>
+                <div class='phone'>📱 للطلب: 0775978088</div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
