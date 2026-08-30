@@ -1,10 +1,12 @@
 import streamlit as st
 import datetime
+from PIL import Image, ImageDraw, ImageFont
+import io
 
 # إعدادات الصفحة
 st.set_page_config(page_title="دار الخليفي | المنيو اليومي", page_icon="🍲", layout="centered")
 
-# CSS الواجهة بالتصميم المغربي الأنيق
+# CSS الواجهة
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap');
@@ -104,11 +106,10 @@ st.markdown(f"""
 st.sidebar.title("⚙️ لوحة التحكم")
 selected_day = st.sidebar.selectbox("اختر اليوم للعرض أو التعديل:", days_map, index=now.weekday())
 
-# نمرة الواتساب المباشرة للمطعم
 phone_number = "212775978088"
 
 is_sunday = (selected_day == "الأحد")
-manual_closed = st.sidebar.checkbox("🚨 تفعيل وضع العطلة للفيوم الحالي", value=is_sunday)
+manual_closed = st.sidebar.checkbox("🚨 تفعيل وضع العطلة لليوم الحالي", value=is_sunday)
 
 if manual_closed:
     st.error(f"🔴 **مطعم دار الخليفي فـ عطلة يوم {selected_day}. نلقاكم غداً إن شاء الله!**")
@@ -148,7 +149,7 @@ else:
                     st.session_state.custom_dishes[selected_day].pop(idx)
                     st.rerun()
 
-    # أسعار التوصيل المعدلة بـ رياض تولال
+    # أسعار التوصيل
     st.markdown("""
         <div class='delivery-box'>
             <h4 style='color: #2e7d32; margin: 0;'>🛵 أسعار التوصيل (حسب الأسبقية):</h4>
@@ -171,3 +172,39 @@ else:
             </button>
         </a>
     """, unsafe_allow_html=True)
+
+    # دالة إنشاء صورة Story
+    def generate_story_image(day, dishes_list):
+        img = Image.new('RGB', (1080, 1920), color='#8B0000')
+        draw = ImageDraw.Draw(img)
+        
+        # خلفية بطاقة بيضاء
+        draw.rectangle([60, 200, 1020, 1720], fill='white')
+        
+        # نص العنوان (توليد مبسط)
+        draw.text((100, 260), "مطعم دار الخليفي", fill='#8B0000')
+        draw.text((100, 340), f"قائمة أطباق يوم {day}", fill='black')
+        
+        y = 450
+        for item in dishes_list:
+            draw.text((100, y), f"• {item['name']} : {item['price']}", fill='#2B2B2B')
+            y += 80
+            if y > 1500:
+                break
+                
+        draw.text((100, 1580), "للطلب المباشر: 0775978088", fill='#8B0000')
+        
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        return buf.getvalue()
+
+    # زر تحميل صورة Story
+    st.write("---")
+    story_bytes = generate_story_image(selected_day, dishes)
+    st.download_button(
+        label="📸 تحميل المنيو كـ صورة جاهزة للـ Story (1080x1920)",
+        data=story_bytes,
+        file_name=f"menu_{selected_day}.png",
+        mime="image/png",
+        use_container_width=True
+    )
