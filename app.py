@@ -1,8 +1,5 @@
 import streamlit as st
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import datetime
-import os
-import io
 import html
 
 # ============================================================
@@ -137,17 +134,27 @@ st.markdown(
     }
     .delivery-line:last-child { border-bottom: none; }
 
-    /* STORY SECTION */
-    .story-wrap {
-        margin-top: 30px;
-        margin-bottom: 20px;
-        display: flex;
-        justify-content: center;
-    }
-    .story-wrap img {
+    /* GEMINI PROMPT SECTION */
+    .gemini-header {
+        background: linear-gradient(135deg, #260000, #650000);
+        color: white;
         border-radius: 22px;
-        box-shadow: 0 20px 55px rgba(60,0,0,0.25);
-        border: 1px solid rgba(212,175,55,0.35);
+        padding: 24px;
+        margin-top: 28px;
+        margin-bottom: 16px;
+        box-shadow: 0 15px 40px rgba(60,0,0,0.15);
+        border: 1px solid rgba(212,175,55,0.3);
+    }
+    .gemini-title { font-size: 22px; font-weight: 900; }
+    .gemini-description { color: #e7ddc9; font-size: 13.5px; margin-top: 6px; }
+    .gemini-meta {
+        background: white;
+        border-radius: 14px;
+        padding: 12px 18px;
+        border: 1px solid #ece8df;
+        font-size: 14px;
+        color: #444;
+        margin-bottom: 14px;
     }
 
     /* SIDEBAR */
@@ -245,257 +252,135 @@ time_text = now.strftime("%H:%M")
 PHONE = "0775978088"
 
 # ============================================================
-# 5. الخطوط العربية
+# 5. توليد Prompt احترافي لـGemini (بدل توليد الصورة داخل التطبيق)
 # ============================================================
 
-def find_arabic_font(bold=False):
-    candidates = (
-        [
-            "/usr/share/fonts/truetype/noto/NotoSansArabic-Bold.ttf",
-            "/usr/share/fonts/truetype/noto/NotoKufiArabic-Bold.ttf",
-            "/usr/share/fonts/truetype/noto/NotoNaskhArabic-Bold.ttf",
-        ]
-        if bold else
-        [
-            "/usr/share/fonts/truetype/noto/NotoSansArabic-Regular.ttf",
-            "/usr/share/fonts/truetype/noto/NotoSansArabicUI-Regular.ttf",
-            "/usr/share/fonts/truetype/noto/NotoNaskhArabic-Regular.ttf",
-        ]
-    )
-    for font_path in candidates:
-        if os.path.exists(font_path):
-            return font_path
-    return None
-
-
-_FONT_CACHE = {}
-
-def load_font(size, bold=False):
-    key = (size, bold)
-    if key in _FONT_CACHE:
-        return _FONT_CACHE[key]
-    font_path = find_arabic_font(bold)
-    font = ImageFont.truetype(font_path, size) if font_path else ImageFont.load_default()
-    _FONT_CACHE[key] = font
-    return font
-
-
-def draw_centered_text(draw, text, center_x, y, font, fill):
-    bbox = draw.textbbox((0, 0), text, font=font)
-    width = bbox[2] - bbox[0]
-    draw.text((center_x - width / 2, y), text, font=font, fill=fill)
-
-
-def rounded_rectangle(draw, xy, radius, fill=None, outline=None, width=1):
-    draw.rounded_rectangle(xy, radius=radius, fill=fill, outline=outline, width=width)
-
-
-def wrap_dish_name(draw, text, font, max_width, max_lines=2):
-    """يقسم اسم الطبق إلى سطرين عند الحاجة بدل تصغير الخط أو الحذف بعلامة …"""
-    words = text.split(" ")
-    lines = []
-    current = ""
-    for word in words:
-        candidate = f"{current} {word}".strip()
-        candidate_width = draw.textbbox((0, 0), candidate, font=font)[2]
-        if candidate_width <= max_width or not current:
-            current = candidate
-        else:
-            lines.append(current)
-            current = word
-    if current:
-        lines.append(current)
-
-    if len(lines) > max_lines:
-        head = lines[: max_lines - 1]
-        tail = " ".join(lines[max_lines - 1:])
-        lines = head + [tail]
-
-    return lines
-
-
-def chunk_dishes_for_stories(dishes, max_per_story=6, single_story_limit=8):
+def build_gemini_prompt(restaurant_name, location, phone, day_name, dishes):
     """
-    يقرر عدد صور الـStory اللازمة:
-    - حتى 8 أطباق → Story واحدة (بدون التضحية بوضوح النص).
-    - أكثر من 8 → يوزَّع المنيو على عدة Stories بشكل متوازن (5-6 أطباق لكل واحدة كحد أقصى)
-      حتى يبقى الخط كبيراً ومقروءاً دائماً.
+    يبني Prompt جاهز بالإنجليزية لتصميم بطاقة Story عبر Gemini،
+    بناءً على الأطباق المتوفرة فعلياً (available=True) لليوم المختار.
     """
-    count = len(dishes)
-    if count == 0:
-        return [[]]
-    if count <= single_story_limit:
-        return [dishes]
 
-    num_stories = -(-count // max_per_story)  # ceil division
-    base_size = count // num_stories
-    remainder = count % num_stories
+    def format_dish_line(dish):
+        return f'- {dish["name"]} — {dish["price"]}'
 
-    chunks = []
-    idx = 0
-    for i in range(num_stories):
-        size = base_size + (1 if i < remainder else 0)
-        chunks.append(dishes[idx: idx + size])
-        idx += size
-    return chunks
+    common_rules = """For every dish:
 
+- Display the exact Arabic dish name.
+- Display the exact price.
+- Make the dish name large and clearly readable.
+- Make the price visually prominent.
+- Maintain excellent spacing between dishes.
+- Do not make the text tiny.
 
-def get_dish_font_sizes(count):
-    """أحجام الخط حسب عدد الأطباق في نفس الـStory — لا تنزل أبداً تحت حد القراءة الواضحة."""
-    if count <= 3:
-        return {"name": 40, "price": 36, "gap": 34}
-    elif count <= 5:
-        return {"name": 38, "price": 34, "gap": 24}
+The restaurant name must be prominent at the top.
+
+The day must be clearly visible.
+
+The menu must be the main visual focus.
+
+At the bottom, clearly display:
+
+📍 {location}
+📱 {phone}
+
+Make the typography elegant, large and highly readable on a smartphone.
+
+Do not overcrowd the design.
+
+Do not make the text extremely small just to fit more dishes.
+
+If there are many dishes, intelligently organize them into a clean multi-column or structured menu layout while keeping every dish readable.
+
+If the number of dishes makes it impossible to maintain good readability in one poster, prioritize readability and create a visually balanced layout rather than shrinking the text excessively.
+
+No unnecessary English text should appear in the final poster.
+
+No fake restaurant logo.
+
+No fake address.
+
+No fake phone number.
+
+No additional dishes.
+
+No invented prices.
+
+No random food names.
+
+No spelling changes.
+
+No distorted Arabic typography.
+
+No blurry text.
+
+No tiny text.
+
+No excessive decorative elements that interfere with readability.
+
+The final result should look like a premium Moroccan restaurant's professionally designed social media poster.
+
+It must be immediately ready to publish as an Instagram Story.""".format(location=location, phone=phone)
+
+    if len(dishes) > 8:
+        midpoint = -(-len(dishes) // 2)  # تقسيم متوازن (ceil)
+        group_one = dishes[:midpoint]
+        group_two = dishes[midpoint:]
+        group_one_block = "\n".join(format_dish_line(d) for d in group_one)
+        group_two_block = "\n".join(format_dish_line(d) for d in group_two)
+
+        menu_section = f"""If there are too many menu items for one readable Instagram Story, create TWO coordinated Instagram Story posters.
+
+Story 1:
+{group_one_block}
+
+Story 2:
+{group_two_block}
+
+Both posters must use the same visual identity and design system.
+
+Do not sacrifice readability to fit all dishes into one image."""
     else:
-        return {"name": 32, "price": 28, "gap": 16}
+        dishes_block = "\n".join(format_dish_line(d) for d in dishes)
+        menu_section = f"""Use exactly the following menu items:
 
+{dishes_block}"""
 
-# ============================================================
-# 6. توليد صورة/صور الـStory (PNG حقيقية 1080×1920 لكل صورة)
-# ============================================================
+    prompt = f"""Create a premium traditional Moroccan restaurant Instagram Story poster for "{restaurant_name}".
 
-def render_story_page(restaurant_name, location, day_name, phone, dishes, page_index, total_pages):
-    WIDTH, HEIGHT = 1080, 1920
-    base = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 255))
-    draw = ImageDraw.Draw(base)
+The design must feel authentic, elegant, warm, traditional Moroccan and premium, inspired by Moroccan gastronomy and Moroccan hospitality.
 
-    # خلفية متدرجة
-    top_color, bottom_color = (40, 0, 0), (128, 14, 14)
-    for y in range(HEIGHT):
-        ratio = y / HEIGHT
-        r = int(top_color[0] + (bottom_color[0] - top_color[0]) * ratio)
-        g = int(top_color[1] + (bottom_color[1] - top_color[1]) * ratio)
-        b = int(top_color[2] + (bottom_color[2] - top_color[2]) * ratio)
-        draw.line([(0, y), (WIDTH, y)], fill=(r, g, b, 255))
+Restaurant:
+{restaurant_name}
 
-    # زخرفة دائرية
-    draw.ellipse((-170, -170, 340, 340), outline=(212, 175, 55, 255), width=4)
-    draw.ellipse((840, 1610, 1250, 2010), outline=(212, 175, 55, 255), width=4)
+Location:
+{location}
 
-    # إطار ذهبي مزدوج (لمسة Canva)
-    rounded_rectangle(draw, (25, 25, WIDTH - 25, HEIGHT - 25), 45, outline=(212, 175, 55, 255), width=8)
-    rounded_rectangle(draw, (38, 38, WIDTH - 38, HEIGHT - 38), 38, outline=(212, 175, 55, 110), width=2)
+Phone:
+{phone}
 
-    # خطوط الرأس (ضمن الحدود الدنيا/القصوى المطلوبة)
-    logo_font = load_font(68, bold=True)          # 50-75px
-    location_font = load_font(30, bold=True)      # 25-32px
-    day_font = load_font(48, bold=True)           # 40-55px
-    footer_font = load_font(32, bold=True)        # 28-35px
+Day:
+{day_name}
 
-    draw_centered_text(draw, "🍲 " + restaurant_name, WIDTH // 2, 92, logo_font, (255, 255, 255, 255))
-    draw_centered_text(draw, location, WIDTH // 2, 176, location_font, (231, 200, 92, 255))
+Create a vertical Instagram Story poster in 9:16 format.
 
-    # فاصل مزخرف بمعينة ذهبية في المنتصف
-    divider_y = 250
-    draw.line([(150, divider_y), (478, divider_y)], fill=(212, 175, 55, 255), width=3)
-    draw.line([(602, divider_y), (930, divider_y)], fill=(212, 175, 55, 255), width=3)
-    dcx, dcy, dr = WIDTH // 2, divider_y, 10
-    draw.polygon(
-        [(dcx, dcy - dr), (dcx + dr, dcy), (dcx, dcy + dr), (dcx - dr, dcy)],
-        fill=(212, 175, 55, 255)
-    )
+The poster must be designed specifically for Instagram Story and WhatsApp Status.
 
-    title_text = f"منيو يوم {day_name}" if page_index == 0 else f"تكملة منيو {day_name}"
-    draw_centered_text(draw, title_text, WIDTH // 2, 296, day_font, (255, 255, 255, 255))
+Use a sophisticated Moroccan visual identity:
+deep burgundy / dark red, warm cream, subtle gold accents, elegant Moroccan patterns, refined traditional Moroccan decorative elements, subtle zellige-inspired details, premium Moroccan restaurant atmosphere.
 
-    menu_top = 400
-    if total_pages > 1:
-        page_tag_font = load_font(24, bold=True)
-        draw_centered_text(
-            draw, f"({page_index + 1} / {total_pages})", WIDTH // 2, 356, page_tag_font, (231, 200, 92, 255)
-        )
-        menu_top = 410
+The design must look like a professionally designed restaurant menu poster, not like an AI-generated generic poster.
 
-    menu_left, menu_right = 75, 1005
-    menu_bottom = 1555
-    count = len(dishes)
+IMPORTANT:
+The Arabic text must be extremely clear, readable and correctly written.
 
-    if count == 0:
-        empty_font = load_font(38, bold=True)
-        draw_centered_text(draw, "لا توجد أطباق متوفرة اليوم", WIDTH // 2, 950, empty_font, (255, 255, 255, 255))
-    else:
-        sizes = get_dish_font_sizes(count)
-        gap = sizes["gap"]
-        name_font = load_font(sizes["name"], bold=True)
-        price_font = load_font(sizes["price"], bold=True)
+Do not invent, modify, translate, shorten or misspell any restaurant information, dish name, price, phone number or location.
 
-        available_height = (menu_bottom - menu_top) - gap * (count - 1)
-        item_height = available_height / count
+{menu_section}
 
-        # ---- طبقة ظل ناعمة لكل الكروت دفعة واحدة (لمسة Canva احترافية) ----
-        shadow_layer = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
-        shadow_draw = ImageDraw.Draw(shadow_layer)
-        y = menu_top
-        for _ in dishes:
-            rounded_rectangle(
-                shadow_draw,
-                (menu_left, int(y + 9), menu_right, int(y + item_height + 9)),
-                20,
-                fill=(0, 0, 0, 90)
-            )
-            y += item_height + gap
-        shadow_layer = shadow_layer.filter(ImageFilter.GaussianBlur(10))
-        base = Image.alpha_composite(base, shadow_layer)
-        draw = ImageDraw.Draw(base)
+{common_rules}"""
 
-        # ---- الكروت الفعلية + النصوص ----
-        max_name_width = 655
-        y = menu_top
-        for dish in dishes:
-            rounded_rectangle(draw, (menu_left, int(y), menu_right, int(y + item_height)), 20, fill=(255, 255, 255, 255))
-
-            badge_width = 190
-            badge_height = max(30, min(74, int(item_height - 18)))
-            badge_x1 = 95
-            badge_y1 = y + (item_height - badge_height) / 2
-            badge_x2 = badge_x1 + badge_width
-            badge_y2 = badge_y1 + badge_height
-            rounded_rectangle(
-                draw,
-                (int(badge_x1), int(badge_y1), int(badge_x2), int(badge_y2)),
-                15,
-                fill=(114, 0, 0, 255),
-                outline=(212, 175, 55, 255),
-                width=2
-            )
-
-            price_bbox = draw.textbbox((0, 0), dish["price"], font=price_font)
-            price_w = price_bbox[2] - price_bbox[0]
-            price_h = price_bbox[3] - price_bbox[1]
-            draw.text(
-                (int(badge_x1 + (badge_width - price_w) / 2), int(badge_y1 + (badge_height - price_h) / 2 - 3)),
-                dish["price"], font=price_font, fill=(255, 255, 255, 255)
-            )
-
-            lines = wrap_dish_name(draw, dish["name"], name_font, max_name_width)
-            line_height = name_font.size + 8
-            total_text_height = line_height * len(lines)
-            text_y = y + (item_height - total_text_height) / 2
-
-            for line in lines:
-                line_bbox = draw.textbbox((0, 0), line, font=name_font)
-                line_w = line_bbox[2] - line_bbox[0]
-                draw.text((960 - line_w, text_y), line, font=name_font, fill=(30, 30, 30, 255))
-                text_y += line_height
-
-            y += item_height + gap
-
-    # التذييل
-    draw.line([(180, 1650), (900, 1650)], fill=(212, 175, 55, 255), width=3)
-    draw_centered_text(draw, "📍 مكناس - الزيتون", WIDTH // 2, 1695, footer_font, (255, 255, 255, 255))
-    draw_centered_text(draw, f"📱 {phone}", WIDTH // 2, 1752, footer_font, (255, 255, 255, 255))
-
-    return base.convert("RGB")
-
-
-def generate_story_images(restaurant_name, location, day_name, phone, dishes):
-    """يبني قائمة من صور الـStory (1080×1920 لكل واحدة)، مقسّمة تلقائياً عند الحاجة."""
-    chunks = chunk_dishes_for_stories(dishes)
-    total = len(chunks)
-    return [
-        render_story_page(restaurant_name, location, day_name, phone, chunk, i, total)
-        for i, chunk in enumerate(chunks)
-    ]
+    return prompt
 
 # ============================================================
 # 7. Sidebar — لوحة الإدارة
@@ -696,50 +581,40 @@ st.markdown(
 )
 
 # ============================================================
-# 13. توليد بطاقة/بطاقات الـStory
+# 13. تصميم Story عبر Gemini
 # ============================================================
 
-story_images = generate_story_images(
-    restaurant_name="مطعم دار الخليفي",
-    location="مكناس • الزيتون",
-    day_name=selected_day,
-    phone=PHONE,
-    dishes=available_dishes
+st.markdown(
+    """
+    <div class="gemini-header">
+        <div class="gemini-title">🎨 تصميم Story عبر Gemini</div>
+        <div class="gemini-description">اختار اليوم، خذ الـPrompt، انسخو في Gemini، وخلي Gemini يصاوب لك الصورة.</div>
+    </div>
+    """,
+    unsafe_allow_html=True
 )
 
-total_stories = len(story_images)
+if not available_dishes:
+    st.warning("ما كايناش أطباق متوفرة اليوم باش نولدو Prompt. فعّل شي طبق أولاً من لوحة التحكم.")
+else:
+    st.markdown(
+        f'<div class="gemini-meta">📅 <b>اليوم:</b> {html.escape(selected_day)} &nbsp;|&nbsp; 🍽️ <b>الأطباق المتوفرة:</b> {len(available_dishes)}</div>',
+        unsafe_allow_html=True
+    )
 
-for story_idx, story_image in enumerate(story_images):
-    image_buffer = io.BytesIO()
-    story_image.save(image_buffer, format="PNG")
-    image_bytes = image_buffer.getvalue()
+    gemini_prompt = build_gemini_prompt(
+        restaurant_name="مطعم دار الخليفي",
+        location="مكناس - الزيتون",
+        phone=PHONE,
+        day_name=selected_day,
+        dishes=available_dishes
+    )
 
-    st.markdown('<div class="story-wrap">', unsafe_allow_html=True)
-    story_col_left, story_col_center, story_col_right = st.columns([1, 2, 1])
-    with story_col_center:
-        st.image(story_image, use_container_width=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("**📝 Prompt جاهز لـGemini:**")
+    st.code(gemini_prompt, language=None)
+    st.caption("💡 مرري الماوس فوق المربع واضغطي على أيقونة النسخ في الزاوية لنسخ الـPrompt كاملاً.")
 
-    if total_stories == 1:
-        download_label = "📥 تحميل صورة الـStory"
-        file_name = f"dar-lakhlifi-{selected_day}.png"
-    else:
-        download_label = f"📥 تحميل Story {story_idx + 1}"
-        file_name = f"dar-lakhlifi-{selected_day}-part{story_idx + 1}.png"
-
-    btn_left, btn_center, btn_right = st.columns([1, 2, 1])
-    with btn_center:
-        st.download_button(
-            label=download_label,
-            data=image_bytes,
-            file_name=file_name,
-            mime="image/png",
-            use_container_width=True,
-            key=f"download_story_{story_idx}"
-        )
-
-    if story_idx < total_stories - 1:
-        st.markdown("<br>", unsafe_allow_html=True)
+    st.link_button("✨ افتح Gemini", "https://gemini.google.com/app", use_container_width=True)
 
 # ============================================================
 # 14. Footer
