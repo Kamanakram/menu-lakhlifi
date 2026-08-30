@@ -1,46 +1,64 @@
 import streamlit as st
 import datetime
-import io
-import base64
+import json
 import html
-from PIL import Image, ImageDraw, ImageFont
+import base64
+import urllib.parse
 
-# ============================================================
-# CONFIGURATION
-# ============================================================
+# =========================================================
+# إعداد الصفحة
+# =========================================================
 
 st.set_page_config(
-    page_title="دار الخليفي | المنيو اليومي",
+    page_title="دار الخليفي | المنيو",
     page_icon="🍲",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# ============================================================
-# GLOBAL CSS — MODERN PREMIUM UI
-# ============================================================
+# =========================================================
+# CSS — DESIGN MODERN / PREMIUM
+# =========================================================
 
 st.markdown("""
 <style>
 
 @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800;900&display=swap');
 
-* {
-    font-family: 'Tajawal', sans-serif !important;
+:root {
+    --red: #720000;
+    --dark-red: #3d0000;
+    --gold: #d4af37;
+    --cream: #f8f5ef;
+    --white: #ffffff;
+    --text: #202020;
+    --muted: #777777;
 }
 
-html, body, [class*="css"] {
+html,
+body,
+[class*="css"] {
+    font-family: 'Tajawal', sans-serif !important;
     direction: rtl;
 }
 
 .stApp {
     background:
-        radial-gradient(circle at 10% 10%, rgba(139,0,0,.05), transparent 25%),
-        radial-gradient(circle at 90% 20%, rgba(212,175,55,.06), transparent 25%),
-        #f7f4ef;
+        radial-gradient(
+            circle at 0% 0%,
+            rgba(212,175,55,0.08),
+            transparent 28%
+        ),
+        radial-gradient(
+            circle at 100% 20%,
+            rgba(114,0,0,0.06),
+            transparent 30%
+        ),
+        #f8f5ef;
 }
 
-/* Hide Streamlit decoration */
+/* إخفاء أشياء Streamlit غير الضرورية */
+
 #MainMenu {
     visibility: hidden;
 }
@@ -53,186 +71,266 @@ header {
     background: transparent !important;
 }
 
-/* Main container */
+/* الحاوية */
+
 .block-container {
     max-width: 1250px !important;
-    padding-top: 2rem !important;
-    padding-bottom: 4rem !important;
+    padding-top: 25px !important;
+    padding-bottom: 50px !important;
 }
 
-/* ================= HEADER ================= */
+/* =========================================================
+   HERO
+   ========================================================= */
 
 .hero {
     position: relative;
     overflow: hidden;
+
     background:
-        linear-gradient(135deg, #450000 0%, #760000 45%, #a51d1d 100%);
-    border-radius: 28px;
-    padding: 42px 35px;
+        radial-gradient(
+            circle at 15% 20%,
+            rgba(212,175,55,0.18),
+            transparent 25%
+        ),
+        linear-gradient(
+            135deg,
+            #300000 0%,
+            #650000 48%,
+            #930e0e 100%
+        );
+
+    border-radius: 30px;
+    padding: 42px 38px;
     color: white;
-    box-shadow: 0 20px 50px rgba(69,0,0,.20);
+
+    box-shadow:
+        0 20px 55px rgba(60,0,0,0.20);
+
     margin-bottom: 28px;
 }
 
-.hero:before {
+.hero::before {
     content: "";
     position: absolute;
-    width: 280px;
-    height: 280px;
+
+    width: 300px;
+    height: 300px;
+
+    border: 1px solid rgba(212,175,55,0.20);
     border-radius: 50%;
-    background: rgba(255,255,255,.05);
-    top: -130px;
-    left: -80px;
+
+    top: -180px;
+    left: -100px;
 }
 
-.hero:after {
+.hero::after {
     content: "";
     position: absolute;
-    width: 220px;
-    height: 220px;
+
+    width: 250px;
+    height: 250px;
+
+    border: 1px solid rgba(255,255,255,0.08);
     border-radius: 50%;
-    background: rgba(212,175,55,.08);
-    bottom: -120px;
-    right: -50px;
+
+    bottom: -170px;
+    right: -80px;
 }
 
 .hero-content {
     position: relative;
-    z-index: 2;
+    z-index: 5;
+}
+
+.hero-small {
+    font-size: 14px;
+    opacity: 0.72;
+    margin-bottom: 8px;
 }
 
 .hero-title {
-    font-size: 42px;
+    font-size: 44px;
+    line-height: 1.15;
     font-weight: 900;
     margin: 0;
-    letter-spacing: -1px;
 }
 
 .hero-subtitle {
-    margin-top: 8px;
     font-size: 17px;
-    opacity: .9;
+    opacity: 0.9;
+    margin-top: 10px;
 }
 
 .hero-date {
     display: inline-block;
+
     margin-top: 22px;
-    padding: 8px 16px;
-    border-radius: 30px;
-    background: rgba(255,255,255,.12);
-    border: 1px solid rgba(255,255,255,.16);
+
+    padding: 9px 17px;
+
+    border-radius: 50px;
+
+    background: rgba(255,255,255,0.10);
+    border: 1px solid rgba(255,255,255,0.15);
+
     font-size: 14px;
 }
 
-/* ================= SECTION TITLES ================= */
+/* =========================================================
+   SECTION
+   ========================================================= */
 
 .section-title {
-    font-size: 25px;
+    color: #470000;
+    font-size: 26px;
     font-weight: 900;
-    color: #450000;
     margin-top: 10px;
-    margin-bottom: 18px;
 }
 
 .section-subtitle {
-    color: #777;
-    margin-top: -10px;
-    margin-bottom: 20px;
+    color: #888;
+    font-size: 14px;
+    margin-bottom: 22px;
 }
 
-/* ================= DISH CARD ================= */
+/* =========================================================
+   DISH
+   ========================================================= */
 
-.dish-card {
-    background: rgba(255,255,255,.92);
-    border: 1px solid rgba(69,0,0,.07);
-    border-radius: 18px;
-    padding: 18px 20px;
-    margin-bottom: 13px;
-    box-shadow: 0 7px 25px rgba(0,0,0,.055);
-    transition: all .25s ease;
+.dish {
+    background: rgba(255,255,255,0.95);
+
+    border: 1px solid rgba(80,0,0,0.07);
+
+    border-radius: 20px;
+
+    padding: 17px 20px;
+
+    margin-bottom: 12px;
+
+    box-shadow:
+        0 7px 25px rgba(0,0,0,0.045);
+
+    transition:
+        transform .2s ease,
+        box-shadow .2s ease;
 }
 
-.dish-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 30px rgba(69,0,0,.10);
-    border-color: rgba(139,0,0,.18);
+.dish:hover {
+    transform: translateY(-2px);
+
+    box-shadow:
+        0 12px 30px rgba(70,0,0,0.09);
 }
 
 .dish-name {
     font-size: 17px;
     font-weight: 800;
-    color: #222;
+    color: #202020;
 }
 
 .dish-price {
-    color: #8b0000;
-    font-size: 16px;
-    font-weight: 900;
     margin-top: 5px;
+
+    color: #820000;
+
+    font-size: 16px;
+
+    font-weight: 900;
 }
 
-/* ================= INFO BOX ================= */
+/* =========================================================
+   INFO CARDS
+   ========================================================= */
 
 .info-card {
     background: white;
-    border-radius: 20px;
-    padding: 22px;
-    border: 1px solid #eee;
-    box-shadow: 0 8px 30px rgba(0,0,0,.05);
+
+    border-radius: 22px;
+
+    padding: 24px;
+
+    border: 1px solid #ece8df;
+
+    box-shadow:
+        0 8px 30px rgba(0,0,0,0.045);
 }
 
-.delivery-card {
-    background: linear-gradient(135deg, #f0f9f1, #ffffff);
-    border: 1px solid #cce7ce;
-    border-radius: 20px;
-    padding: 25px;
-    box-shadow: 0 8px 30px rgba(0,0,0,.04);
-}
+.info-title {
+    color: #470000;
 
-.delivery-title {
-    color: #237b2d;
+    font-size: 20px;
+
     font-weight: 900;
-    font-size: 19px;
-    margin-bottom: 12px;
+
+    margin-bottom: 14px;
 }
 
 .delivery-line {
-    padding: 8px 0;
-    border-bottom: 1px dashed #d9e6d9;
-    color: #333;
+    padding: 10px 0;
+
+    border-bottom: 1px dashed #e5e1d8;
+
+    font-size: 14px;
+
+    color: #444;
 }
 
 .delivery-line:last-child {
     border-bottom: none;
 }
 
-/* ================= STORY AREA ================= */
+/* =========================================================
+   STORY SECTION
+   ========================================================= */
 
-.story-container {
-    background: #181818;
-    border-radius: 25px;
-    padding: 25px;
-    box-shadow: 0 20px 50px rgba(0,0,0,.15);
-    margin-top: 20px;
+.story-box {
+    background:
+        linear-gradient(
+            145deg,
+            #190000,
+            #360000
+        );
+
+    border-radius: 28px;
+
+    padding: 28px;
+
+    margin-top: 30px;
+
+    box-shadow:
+        0 20px 50px rgba(0,0,0,0.18);
 }
 
-.story-title {
+.story-heading {
     color: white;
-    font-size: 23px;
+
+    font-size: 25px;
+
     font-weight: 900;
-    margin-bottom: 4px;
 }
 
-.story-description {
-    color: #aaa;
+.story-desc {
+    color: #cfcfcf;
+
     font-size: 14px;
+
+    margin-top: 5px;
 }
 
-/* ================= SIDEBAR ================= */
+/* =========================================================
+   SIDEBAR
+   ========================================================= */
 
 section[data-testid="stSidebar"] {
     background:
-        linear-gradient(180deg, #300000 0%, #500000 55%, #370000 100%);
+        linear-gradient(
+            180deg,
+            #280000,
+            #550000 55%,
+            #320000
+        );
 }
 
 section[data-testid="stSidebar"] * {
@@ -240,11 +338,6 @@ section[data-testid="stSidebar"] * {
 }
 
 section[data-testid="stSidebar"] input {
-    color: #222 !important;
-    background: white !important;
-}
-
-section[data-testid="stSidebar"] textarea {
     color: #222 !important;
     background: white !important;
 }
@@ -257,91 +350,229 @@ section[data-testid="stSidebar"] [data-baseweb="select"] * {
     color: #222 !important;
 }
 
-/* ================= BUTTONS ================= */
+/* =========================================================
+   BUTTONS
+   ========================================================= */
 
-.stButton > button {
-    border-radius: 12px !important;
+.stButton > button,
+.stDownloadButton > button {
+    border-radius: 13px !important;
+
+    min-height: 46px !important;
+
+    font-family:
+        'Tajawal',
+        sans-serif !important;
+
     font-weight: 800 !important;
-    min-height: 45px !important;
-    border: none !important;
-    transition: .2s ease !important;
+
+    transition:
+        transform .18s ease,
+        box-shadow .18s ease !important;
 }
 
-.stButton > button:hover {
-    transform: translateY(-2px);
+.stButton > button:hover,
+.stDownloadButton > button:hover {
+    transform: translateY(-2px) !important;
 }
 
-/* ================= FOOTER ================= */
+/* =========================================================
+   MOBILE
+   ========================================================= */
 
-.footer {
-    margin-top: 50px;
-    padding: 25px;
-    text-align: center;
-    color: #888;
-    font-size: 13px;
+@media (max-width: 700px) {
+
+    .block-container {
+        padding: 15px !important;
+    }
+
+    .hero {
+        padding: 30px 23px;
+        border-radius: 24px;
+    }
+
+    .hero-title {
+        font-size: 32px;
+    }
+
+    .hero-subtitle {
+        font-size: 14px;
+    }
+
+    .story-box {
+        padding: 18px;
+        border-radius: 22px;
+    }
+
 }
 
 </style>
 """, unsafe_allow_html=True)
 
-# ============================================================
-# DEFAULT DATABASE
-# ============================================================
+
+# =========================================================
+# البيانات
+# =========================================================
 
 if "custom_dishes" not in st.session_state:
 
     st.session_state.custom_dishes = {
 
         "الإثنين": [
-            {"name": "ربع دجاج معمر بلافيرميسيل + سلطة", "price": "35 درهم", "available": True},
-            {"name": "دجاجة معمرة بلافيرميسيل + سلطة", "price": "140 درهم", "available": True},
-            {"name": "ربع دجاج بالدغميرة", "price": "35 درهم", "available": True},
-            {"name": "دجاجة بالدغميرة", "price": "120 درهم", "available": True},
-            {"name": "طاجين اللحم بالبرقوق", "price": "40 درهم", "available": True},
-            {"name": "سلطة زعلوك", "price": "10 دراهم", "available": True},
-            {"name": "سلطة خيزو مشرمل", "price": "10 دراهم", "available": True}
+            {
+                "name": "ربع دجاج معمر بلافيرميسيل + سلطة",
+                "price": "35 درهم",
+                "available": True
+            },
+            {
+                "name": "دجاجة معمرة بلافيرميسيل + سلطة",
+                "price": "140 درهم",
+                "available": True
+            },
+            {
+                "name": "ربع دجاج بالدغميرة",
+                "price": "35 درهم",
+                "available": True
+            },
+            {
+                "name": "دجاجة بالدغميرة",
+                "price": "120 درهم",
+                "available": True
+            },
+            {
+                "name": "طاجين اللحم بالبرقوق",
+                "price": "40 درهم",
+                "available": True
+            },
+            {
+                "name": "سلطة زعلوك",
+                "price": "10 دراهم",
+                "available": True
+            },
+            {
+                "name": "سلطة خيزو مشرمل",
+                "price": "10 دراهم",
+                "available": True
+            }
         ],
 
         "الثلاثاء": [
-            {"name": "سفة مدفونة بالدجاج", "price": "35 درهم", "available": True},
-            {"name": "طاجين سردين كواري", "price": "30 درهم", "available": True},
-            {"name": "ربع دجاج بالدغميرة", "price": "35 درهم", "available": True},
-            {"name": "دجاجة بالدغميرة", "price": "120 درهم", "available": True},
-            {"name": "طاجين اللحم بالبرقوق", "price": "40 درهم", "available": True}
+            {
+                "name": "سفة مدفونة بالدجاج",
+                "price": "35 درهم",
+                "available": True
+            },
+            {
+                "name": "طاجين سردين كواري",
+                "price": "30 درهم",
+                "available": True
+            },
+            {
+                "name": "ربع دجاج بالدغميرة",
+                "price": "35 درهم",
+                "available": True
+            },
+            {
+                "name": "دجاجة بالدغميرة",
+                "price": "120 درهم",
+                "available": True
+            },
+            {
+                "name": "طاجين اللحم بالبرقوق",
+                "price": "40 درهم",
+                "available": True
+            }
         ],
 
         "الأربعاء": [
-            {"name": "طبق بورماش / الرفيسة بالدجاج", "price": "35 درهم", "available": True},
-            {"name": "قصعة الرفيسة بالدجاج", "price": "250 درهم", "available": True},
-            {"name": "ربع دجاج بالدغميرة", "price": "35 درهم", "available": True}
+            {
+                "name": "طبق بورماش / الرفيسة بالدجاج",
+                "price": "35 درهم",
+                "available": True
+            },
+            {
+                "name": "قصعة الرفيسة بالدجاج",
+                "price": "250 درهم",
+                "available": True
+            },
+            {
+                "name": "ربع دجاج بالدغميرة",
+                "price": "35 درهم",
+                "available": True
+            }
         ],
 
         "الخميس": [
-            {"name": "ربع دجاج معمر بالمعدنوس + سلطة", "price": "35 درهم", "available": True},
-            {"name": "سفة مدفونة بالدجاج", "price": "35 درهم", "available": True},
-            {"name": "طاجين سردين كواري", "price": "30 درهم", "available": True},
-            {"name": "ربع دجاج بالدغميرة", "price": "35 درهم", "available": True}
+            {
+                "name": "ربع دجاج معمر بالمعدنوس + سلطة",
+                "price": "35 درهم",
+                "available": True
+            },
+            {
+                "name": "سفة مدفونة بالدجاج",
+                "price": "35 درهم",
+                "available": True
+            },
+            {
+                "name": "طاجين سردين كواري",
+                "price": "30 درهم",
+                "available": True
+            },
+            {
+                "name": "ربع دجاج بالدغميرة",
+                "price": "35 درهم",
+                "available": True
+            }
         ],
 
         "الجمعة": [
-            {"name": "طبق كسكسو بالدجاج", "price": "35 درهم", "available": True},
-            {"name": "طبق كسكسو باللحم", "price": "45 درهم", "available": True},
-            {"name": "قصعة كسكسو بالدجاج", "price": "250 درهم", "available": True}
+            {
+                "name": "طبق كسكسو بالدجاج",
+                "price": "35 درهم",
+                "available": True
+            },
+            {
+                "name": "طبق كسكسو باللحم",
+                "price": "45 درهم",
+                "available": True
+            },
+            {
+                "name": "قصعة كسكسو بالدجاج",
+                "price": "250 درهم",
+                "available": True
+            }
         ],
 
         "السبت": [
-            {"name": "ميني بسطيلة دجاج", "price": "15 درهم", "available": True},
-            {"name": "ميني بسطيلة حوت", "price": "20 درهم", "available": True},
-            {"name": "بسطيلة دجاج (شخصين)", "price": "99 درهم", "available": True},
-            {"name": "بسطيلة حوت (شخصين)", "price": "159 درهم", "available": True}
+            {
+                "name": "ميني بسطيلة دجاج",
+                "price": "15 درهم",
+                "available": True
+            },
+            {
+                "name": "ميني بسطيلة حوت",
+                "price": "20 درهم",
+                "available": True
+            },
+            {
+                "name": "بسطيلة دجاج (شخصين)",
+                "price": "99 درهم",
+                "available": True
+            },
+            {
+                "name": "بسطيلة حوت (شخصين)",
+                "price": "159 درهم",
+                "available": True
+            }
         ],
 
         "الأحد": []
     }
 
-# ============================================================
-# DATE
-# ============================================================
+
+# =========================================================
+# الوقت
+# =========================================================
 
 now = datetime.datetime.now()
 
@@ -356,215 +587,275 @@ days_map = [
 ]
 
 today_name = days_map[now.weekday()]
-current_time = now.strftime("%H:%M")
-current_date = now.strftime("%d/%m/%Y")
 
-# ============================================================
-# SETTINGS
-# ============================================================
+date_text = now.strftime("%d/%m/%Y")
+time_text = now.strftime("%H:%M")
 
-phone_number = "212775978088"
-app_url = "https://menu-lakhlifi-iptwnqbcfs3nbergvdqshg.streamlit.app"
+PHONE = "212775978088"
 
-# ============================================================
+APP_URL = (
+    "https://menu-lakhlifi-iptwnqbcfs3nbergvdqshg."
+    "streamlit.app"
+)
+
+
+# =========================================================
 # SIDEBAR
-# ============================================================
+# =========================================================
 
-st.sidebar.markdown("""
-<div style="
-text-align:center;
-padding:15px 0 25px 0;
-">
-<div style="font-size:42px;">🍲</div>
-<div style="font-size:23px;font-weight:900;">دار الخليفي</div>
-<div style="font-size:13px;opacity:.75;">لوحة إدارة المنيو</div>
-</div>
-""", unsafe_allow_html=True)
-
-selected_day = st.sidebar.selectbox(
-    "📅 اختر اليوم",
-    days_map,
-    index=now.weekday()
-)
-
-st.sidebar.markdown("---")
-
-manual_closed = st.sidebar.checkbox(
-    "🚨 إغلاق المطعم لهذا اليوم",
-    value=(selected_day == "الأحد")
-)
-
-# ============================================================
-# HEADER
-# ============================================================
-
-st.markdown(f"""
-<div class="hero">
-    <div class="hero-content">
-        <div style="font-size:14px;opacity:.75;margin-bottom:7px;">
-            مطعم مغربي أصيل • مكناس
-        </div>
-
-        <div class="hero-title">
-            دار الخليفي 🍲
-        </div>
-
-        <div class="hero-subtitle">
-            المنيو اليومي • الطلبات • المشاركة في الستوري
-        </div>
-
-        <div class="hero-date">
-            📅 {today_name} {current_date}
-            &nbsp;&nbsp;•&nbsp;&nbsp;
-            ⏰ {current_time}
-        </div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-# ============================================================
-# CLOSED
-# ============================================================
-
-if manual_closed:
-
-    st.error(
-        f"🔴 مطعم دار الخليفي في عطلة يوم {selected_day}. "
-        "نلقاكم غداً إن شاء الله ❤️"
-    )
-
-else:
-
-    # ========================================================
-    # ADD DISH
-    # ========================================================
-
-    with st.sidebar:
-
-        st.markdown("---")
-        st.markdown("### ➕ إضافة طبق")
-
-        new_name = st.text_input(
-            "اسم الطبق",
-            placeholder="مثال: طاجين اللحم..."
-        )
-
-        new_price = st.text_input(
-            "الثمن",
-            placeholder="مثال: 40 درهم"
-        )
-
-        if st.button(
-            "➕ إضافة الطبق",
-            use_container_width=True
-        ):
-
-            if new_name.strip() and new_price.strip():
-
-                if selected_day not in st.session_state.custom_dishes:
-                    st.session_state.custom_dishes[selected_day] = []
-
-                st.session_state.custom_dishes[selected_day].append({
-                    "name": new_name.strip(),
-                    "price": new_price.strip(),
-                    "available": True
-                })
-
-                st.success("تمت إضافة الطبق ✅")
-                st.rerun()
-
-            else:
-                st.warning("دخل اسم الطبق والثمن.")
-
-    # ========================================================
-    # DISHES
-    # ========================================================
-
-    dishes = st.session_state.custom_dishes.get(
-        selected_day,
-        []
-    )
+with st.sidebar:
 
     st.markdown(
-        f"""
-        <div class="section-title">
-            🍽️ منيو {selected_day}
-        </div>
+        """
+        <div style="
+            text-align:center;
+            padding:10px 0 25px;
+        ">
+            <div style="font-size:50px;">🍲</div>
 
-        <div class="section-subtitle">
-            {len(dishes)} طبق مسجل • يمكنك إظهار أو إخفاء أي طبق
+            <div style="
+                font-size:25px;
+                font-weight:900;
+            ">
+                دار الخليفي
+            </div>
+
+            <div style="
+                font-size:13px;
+                opacity:.70;
+                margin-top:5px;
+            ">
+                إدارة المنيو
+            </div>
         </div>
         """,
         unsafe_allow_html=True
     )
 
-    if not dishes:
+    selected_day = st.selectbox(
+        "📅 اليوم",
+        days_map,
+        index=now.weekday()
+    )
 
-        st.info("🍽️ لا توجد أطباق مسجلة لهذا اليوم.")
+    st.markdown("---")
 
-    else:
+    closed = st.checkbox(
+        "🚨 المطعم مغلق اليوم",
+        value=(selected_day == "الأحد")
+    )
 
-        for idx, dish in enumerate(dishes):
+    st.markdown("---")
 
-            col1, col2, col3 = st.columns(
-                [6, 2, 1],
-                vertical_alignment="center"
+    st.markdown(
+        """
+        <div style="
+            font-size:19px;
+            font-weight:900;
+            margin-bottom:12px;
+        ">
+            ➕ إضافة طبق
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    new_name = st.text_input(
+        "اسم الطبق",
+        placeholder="مثال: طاجين اللحم..."
+    )
+
+    new_price = st.text_input(
+        "الثمن",
+        placeholder="مثال: 40 درهم"
+    )
+
+    if st.button(
+        "➕ إضافة الطبق",
+        use_container_width=True
+    ):
+
+        if new_name.strip() and new_price.strip():
+
+            st.session_state.custom_dishes[
+                selected_day
+            ].append(
+                {
+                    "name": new_name.strip(),
+                    "price": new_price.strip(),
+                    "available": True
+                }
             )
 
-            with col1:
+            st.success("تمت إضافة الطبق ✅")
 
-                safe_name = html.escape(dish["name"])
-                safe_price = html.escape(dish["price"])
+            st.rerun()
 
-                st.markdown(
-                    f"""
-                    <div class="dish-card">
-                        <div class="dish-name">
-                            {safe_name}
-                        </div>
-                        <div class="dish-price">
-                            {safe_price}
-                        </div>
+        else:
+
+            st.warning(
+                "خاصك تدخل اسم الطبق والثمن."
+            )
+
+
+# =========================================================
+# HEADER
+# =========================================================
+
+st.markdown(
+    f"""
+    <div class="hero">
+
+        <div class="hero-content">
+
+            <div class="hero-small">
+                مطعم مغربي أصيل • مكناس
+            </div>
+
+            <div class="hero-title">
+                مطعم دار الخليفي 🍲
+            </div>
+
+            <div class="hero-subtitle">
+                المنيو اليومية والطلبات
+                ومشاركة القائمة في الستوري
+            </div>
+
+            <div class="hero-date">
+                📅 {today_name} {date_text}
+                &nbsp;&nbsp; • &nbsp;&nbsp;
+                ⏰ {time_text}
+            </div>
+
+        </div>
+
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+
+# =========================================================
+# إغلاق المطعم
+# =========================================================
+
+if closed:
+
+    st.error(
+        f"🔴 مطعم دار الخليفي مغلق يوم {selected_day}. "
+        "نلقاكم غداً إن شاء الله ❤️"
+    )
+
+    st.stop()
+
+
+# =========================================================
+# GET DISHES
+# =========================================================
+
+dishes = st.session_state.custom_dishes.get(
+    selected_day,
+    []
+)
+
+available_dishes = [
+    d for d in dishes
+    if d.get("available", True)
+]
+
+
+# =========================================================
+# MENU
+# =========================================================
+
+st.markdown(
+    f"""
+    <div class="section-title">
+        🍽️ منيو {selected_day}
+    </div>
+
+    <div class="section-subtitle">
+        {len(available_dishes)} أطباق متوفرة حالياً
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+
+if not dishes:
+
+    st.info(
+        "🍽️ مازال ما كاين حتى طبق مسجل لهذا اليوم."
+    )
+
+else:
+
+    for index, dish in enumerate(dishes):
+
+        col1, col2, col3 = st.columns(
+            [6, 1.5, .7],
+            vertical_alignment="center"
+        )
+
+        with col1:
+
+            st.markdown(
+                f"""
+                <div class="dish">
+
+                    <div class="dish-name">
+                        {html.escape(dish["name"])}
                     </div>
-                    """,
-                    unsafe_allow_html=True
-                )
 
-            with col2:
+                    <div class="dish-price">
+                        {html.escape(dish["price"])}
+                    </div>
 
-                available = st.checkbox(
-                    "متوفر",
-                    value=dish.get("available", True),
-                    key=f"available_{selected_day}_{idx}"
-                )
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        with col2:
+
+            available = st.checkbox(
+                "متوفر",
+                value=dish.get(
+                    "available",
+                    True
+                ),
+                key=f"available_{selected_day}_{index}"
+            )
+
+            st.session_state.custom_dishes[
+                selected_day
+            ][index]["available"] = available
+
+        with col3:
+
+            if st.button(
+                "🗑️",
+                key=f"delete_{selected_day}_{index}"
+            ):
 
                 st.session_state.custom_dishes[
                     selected_day
-                ][idx]["available"] = available
+                ].pop(index)
 
-            with col3:
+                st.rerun()
 
-                if st.button(
-                    "🗑️",
-                    key=f"delete_{selected_day}_{idx}"
-                ):
 
-                    st.session_state.custom_dishes[
-                        selected_day
-                    ].pop(idx)
+# =========================================================
+# DELIVERY
+# =========================================================
 
-                    st.rerun()
+st.markdown("<br>", unsafe_allow_html=True)
 
-    # ========================================================
-    # DELIVERY
-    # ========================================================
+st.markdown(
+    """
+    <div class="info-card">
 
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="delivery-card">
-
-        <div class="delivery-title">
+        <div class="info-title">
             🛵 أسعار التوصيل
         </div>
 
@@ -585,640 +876,1322 @@ else:
         </div>
 
         <div class="delivery-line">
-            🚀 <b>التوصيل السريع VIP:</b> من 15 إلى 25 درهم
+            🚀 <b>التوصيل السريع VIP:</b>
+            من 15 إلى 25 درهم
         </div>
 
     </div>
-    """, unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True
+)
 
-    # ========================================================
-    # WHATSAPP ORDER
-    # ========================================================
 
-    st.markdown("<br>", unsafe_allow_html=True)
+# =========================================================
+# WHATSAPP ORDER
+# =========================================================
 
-    whatsapp_url = (
-        f"https://wa.me/{phone_number}"
-        "?text=سلام%20دار%20الخليفي،%20بغيت%20نطلب%20من%20المنيو%20ديال%20اليوم"
-    )
+st.markdown("<br>", unsafe_allow_html=True)
 
-    st.markdown(
-        f"""
-        <a href="{whatsapp_url}" target="_blank" style="text-decoration:none;">
+whatsapp_message = urllib.parse.quote(
+    "سلام دار الخليفي، بغيت نطلب من المنيو ديال اليوم 🍲"
+)
+
+whatsapp_order_url = (
+    f"https://wa.me/{PHONE}"
+    f"?text={whatsapp_message}"
+)
+
+st.markdown(
+    f"""
+    <a
+        href="{whatsapp_order_url}"
+        target="_blank"
+        style="text-decoration:none;"
+    >
+
+        <div style="
+            background:
+                linear-gradient(
+                    135deg,
+                    #128C7E,
+                    #25D366
+                );
+
+            color:white;
+
+            padding:19px;
+
+            border-radius:18px;
+
+            text-align:center;
+
+            font-size:19px;
+
+            font-weight:900;
+
+            box-shadow:
+                0 12px 30px
+                rgba(37,211,102,.18);
+        ">
+
+            📱 اطلب دابا عبر WhatsApp
+
             <div style="
-                background:linear-gradient(135deg,#128C7E,#25D366);
-                color:white;
-                padding:18px;
-                border-radius:18px;
-                text-align:center;
-                font-size:18px;
-                font-weight:900;
-                box-shadow:0 10px 30px rgba(37,211,102,.20);
+                font-size:13px;
+                font-weight:500;
+                margin-top:5px;
             ">
-                📱 اطلب دابا عبر WhatsApp
-                <div style="font-size:13px;font-weight:500;margin-top:4px;">
-                    0775978088
-                </div>
+                0775978088
             </div>
-        </a>
-        """,
-        unsafe_allow_html=True
-    )
 
-    # ========================================================
-    # STORY GENERATOR
-    # ========================================================
+        </div>
 
-    st.markdown("<br><br>", unsafe_allow_html=True)
+    </a>
+    """,
+    unsafe_allow_html=True
+)
 
-    st.markdown("""
-    <div class="story-container">
 
-        <div class="story-title">
+# =========================================================
+# STORY MAKER
+# =========================================================
+
+st.markdown(
+    """
+    <div class="story-box">
+
+        <div class="story-heading">
             📱 Story Maker
         </div>
 
-        <div class="story-description">
-            الكارت كتتحدث أوتوماتيكياً حسب المنيو الحالية
-            • Format 1080 × 1920
+        <div class="story-desc">
+            الكارت كتتولد بنسبة 9:16 وبمقاس
+            1080 × 1920، وجميع الأطباق المتوفرة
+            كتدخل فيها أوتوماتيكياً.
         </div>
 
     </div>
-    """, unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True
+)
 
-    # ========================================================
-    # STORY HTML
-    # ========================================================
 
-    available_dishes = [
-        d for d in dishes
-        if d.get("available", True)
+# =========================================================
+# DATA FOR JAVASCRIPT
+# =========================================================
+
+story_data = {
+    "restaurant": "مطعم دار الخليفي",
+    "location": "مكناس • الزيتون",
+    "day": f"منيو {selected_day}",
+    "phone": "0775978088",
+    "dishes": [
+        {
+            "name": d["name"],
+            "price": d["price"]
+        }
+        for d in available_dishes
     ]
+}
 
-    story_items = ""
+story_json = json.dumps(
+    story_data,
+    ensure_ascii=False
+)
 
-    for d in available_dishes:
+story_json_safe = (
+    story_json
+    .replace("\\", "\\\\")
+    .replace("</", "<\\/")
+    .replace("'", "\\'")
+)
 
-        story_items += f"""
-        <div style="
-            background:rgba(255,255,255,.96);
-            border-radius:22px;
-            padding:18px 20px;
-            margin-bottom:13px;
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            gap:15px;
-            box-shadow:0 8px 25px rgba(0,0,0,.16);
-        ">
 
-            <div style="
-                color:#222;
-                font-size:27px;
-                font-weight:800;
-                flex:1;
-                line-height:1.35;
-            ">
-                {html.escape(d["name"])}
-            </div>
+# =========================================================
+# STORY PREVIEW + IMAGE GENERATOR
+# =========================================================
 
-            <div style="
-                background:#8B0000;
-                color:#fff;
-                padding:9px 15px;
-                border-radius:14px;
-                font-size:24px;
-                font-weight:900;
-                white-space:nowrap;
-            ">
-                {html.escape(d["price"])}
-            </div>
+story_component = f"""
+<!DOCTYPE html>
 
-        </div>
-        """
+<html lang="ar" dir="rtl">
 
-    if not story_items:
+<head>
 
-        story_items = """
-        <div style="
-            background:white;
-            color:#555;
-            padding:30px;
-            border-radius:20px;
-            text-align:center;
-            font-size:25px;
-        ">
-            لا توجد أطباق متوفرة اليوم
-        </div>
-        """
+<meta charset="UTF-8">
 
-    story_html = f"""
-    <html dir="rtl">
+<meta
+    name="viewport"
+    content="
+        width=device-width,
+        initial-scale=1.0
+    "
+>
 
-    <head>
-
-    <meta name="viewport"
-          content="width=device-width,
-                   initial-scale=1.0">
-
-    <link href="
-    https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;800;900
+<link
+    href="
+    https://fonts.googleapis.com/css2?
+    family=Tajawal:wght@400;500;600;700;800;900
     &display=swap"
-    rel="stylesheet">
+    rel="stylesheet"
+>
 
-    <style>
+<style>
 
-    * {{
-        box-sizing:border-box;
-    }}
+* {{
+    box-sizing:border-box;
+}}
 
-    body {{
-        margin:0;
-        padding:20px;
-        background:#111;
-        font-family:'Tajawal',sans-serif;
-    }}
+body {{
+    margin:0;
 
-    .story {{
-        width:100%;
-        max-width:540px;
-        aspect-ratio:9 / 16;
-        margin:auto;
+    padding:15px;
 
-        padding:38px 30px;
+    background:#111;
 
-        border-radius:32px;
+    font-family:
+        'Tajawal',
+        sans-serif;
 
-        background:
-        radial-gradient(circle at 15% 10%,
-            rgba(212,175,55,.25),
-            transparent 20%),
+    color:white;
+}}
 
-        radial-gradient(circle at 90% 85%,
-            rgba(255,255,255,.08),
-            transparent 25%),
+.wrapper {{
+    display:flex;
 
+    justify-content:center;
+}}
+
+.story {{
+    width:min(100%, 540px);
+
+    aspect-ratio:9 / 16;
+
+    position:relative;
+
+    overflow:hidden;
+
+    border-radius:28px;
+
+    border:3px solid #D4AF37;
+
+    background:
+        radial-gradient(
+            circle at 15% 8%,
+            rgba(212,175,55,.22),
+            transparent 22%
+        ),
+        radial-gradient(
+            circle at 90% 88%,
+            rgba(255,255,255,.07),
+            transparent 25%
+        ),
         linear-gradient(
-            160deg,
-            #3c0000 0%,
-            #730000 45%,
-            #9d1616 100%
+            155deg,
+            #350000 0%,
+            #680000 45%,
+            #970f0f 100%
         );
 
-        border:3px solid #d4af37;
+    box-shadow:
+        0 25px 60px
+        rgba(0,0,0,.55);
 
-        box-shadow:
-            0 25px 60px rgba(0,0,0,.5);
+    padding:
+        7%
+        6%;
 
-        overflow:hidden;
-    }}
+    display:flex;
 
-    .brand {{
-        text-align:center;
-        color:white;
-        font-size:38px;
-        font-weight:900;
-    }}
+    flex-direction:column;
+}}
 
-    .location {{
-        text-align:center;
-        color:#e7ca72;
-        font-size:20px;
-        margin-top:5px;
-    }}
+.logo {{
+    text-align:center;
 
-    .line {{
-        height:2px;
-        background:#d4af37;
-        opacity:.6;
-        margin:25px 0;
-    }}
+    font-size:clamp(
+        22px,
+        5vw,
+        38px
+    );
 
-    .day {{
-        color:white;
-        text-align:center;
-        font-size:30px;
-        font-weight:900;
-        margin-bottom:25px;
-    }}
+    font-weight:900;
 
-    .footer {{
-        color:white;
-        text-align:center;
-        margin-top:25px;
-        font-size:20px;
-        line-height:1.7;
-    }}
+    line-height:1.2;
+}}
 
-    .phone {{
-        display:inline-block;
-        background:#25D366;
-        padding:9px 18px;
-        border-radius:30px;
-        margin-top:8px;
-        font-weight:900;
-    }}
+.location {{
+    text-align:center;
 
-    </style>
+    color:#E9CF78;
 
-    </head>
+    font-size:clamp(
+        12px,
+        2.5vw,
+        20px
+    );
 
-    <body>
+    font-weight:700;
 
-        <div class="story">
+    margin-top:5px;
+}}
 
-            <div class="brand">
-                دار الخليفي 🍲
-            </div>
+.divider {{
+    width:75%;
 
-            <div class="location">
-                مكناس • الزيتون
-            </div>
+    height:2px;
 
-            <div class="line"></div>
+    background:#D4AF37;
 
-            <div class="day">
-                منيو {selected_day}
-            </div>
+    opacity:.7;
 
-            {story_items}
+    margin:
+        4% auto;
+}}
 
-            <div class="footer">
+.day {{
+    text-align:center;
 
-                🍽️ مرحباً بكم
+    font-size:clamp(
+        18px,
+        4vw,
+        30px
+    );
 
-                <br>
+    font-weight:900;
 
-                📱 للطلب عبر WhatsApp
+    margin-bottom:4%;
+}}
 
-                <br>
+.menu {{
+    flex:1;
 
-                <span class="phone">
-                    0775978088
-                </span>
+    display:flex;
 
-            </div>
+    flex-direction:column;
+
+    justify-content:center;
+
+    gap:clamp(
+        6px,
+        1.2vw,
+        13px
+    );
+
+    min-height:0;
+}}
+
+.item {{
+    background:rgba(
+        255,
+        255,
+        255,
+        .97
+    );
+
+    color:#202020;
+
+    border-radius:16px;
+
+    padding:
+        clamp(8px,1.7vw,18px)
+        clamp(10px,2vw,20px);
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:space-between;
+
+    gap:10px;
+
+    box-shadow:
+        0 5px 18px
+        rgba(0,0,0,.14);
+
+    min-height:0;
+}}
+
+.item-name {{
+    font-weight:800;
+
+    line-height:1.25;
+
+    font-size:clamp(
+        11px,
+        2.3vw,
+        24px
+    );
+
+    overflow-wrap:anywhere;
+}}
+
+.price {{
+    background:#720000;
+
+    color:white;
+
+    border-radius:10px;
+
+    padding:
+        5px 9px;
+
+    font-size:clamp(
+        10px,
+        2vw,
+        20px
+    );
+
+    font-weight:900;
+
+    white-space:nowrap;
+}}
+
+.footer {{
+    text-align:center;
+
+    margin-top:4%;
+
+    font-size:clamp(
+        11px,
+        2.2vw,
+        19px
+    );
+
+    line-height:1.5;
+
+    font-weight:700;
+}}
+
+.phone {{
+    display:inline-block;
+
+    background:#25D366;
+
+    color:white;
+
+    border-radius:30px;
+
+    padding:
+        5px 14px;
+
+    margin-top:5px;
+
+    font-weight:900;
+}}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="wrapper">
+
+    <div
+        class="story"
+        id="story"
+    >
+
+        <div class="logo">
+            🍲 مطعم دار الخليفي
+        </div>
+
+        <div class="location">
+            مكناس • الزيتون
+        </div>
+
+        <div class="divider"></div>
+
+        <div
+            class="day"
+            id="day"
+        ></div>
+
+        <div
+            class="menu"
+            id="menu"
+        ></div>
+
+        <div class="footer">
+
+            📍 مكناس - الزيتون
+
+            <br>
+
+            📱 للطلب عبر WhatsApp
+
+            <br>
+
+            <span class="phone">
+                0775978088
+            </span>
 
         </div>
 
-    </body>
-    </html>
-    """
+    </div>
 
-    # ========================================================
-    # PREVIEW
-    # ========================================================
+</div>
 
-    st.components.v1.html(
-        story_html,
-        height=900,
-        scrolling=True
-    )
+<script>
 
-    # ========================================================
-    # STORY IMAGE — 1080 x 1920
-    # ========================================================
+const DATA = {story_json_safe};
 
-    def get_font(size, bold=False):
+const menu = document.getElementById(
+    "menu"
+);
 
-        paths = [
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-            if bold
-            else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+const day = document.getElementById(
+    "day"
+);
 
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-        ]
-
-        for path in paths:
-            try:
-                return ImageFont.truetype(path, size)
-            except:
-                pass
-
-        return ImageFont.load_default()
+day.textContent = DATA.day;
 
 
-    def create_story_image():
+/*
+    الحساب الذكي:
 
-        W, H = 1080, 1920
+    عدد قليل من الأطباق
+    = حجم كبير
 
-        img = Image.new(
-            "RGB",
-            (W, H),
-            "#550000"
-        )
+    عدد كبير من الأطباق
+    = حجم أصغر
 
-        draw = ImageDraw.Draw(img)
+    ولكن دائماً داخل
+    1080 × 1920
+*/
 
-        # Background gradient
-        for y in range(H):
+const count = DATA.dishes.length;
 
-            ratio = y / H
+let itemSize = 1;
 
-            r = int(65 + ratio * 65)
-            g = int(0 + ratio * 15)
-            b = int(0 + ratio * 15)
+if (count <= 4) {{
+    itemSize = 1.20;
+}}
+else if (count <= 6) {{
+    itemSize = 1.00;
+}}
+else if (count <= 8) {{
+    itemSize = 0.88;
+}}
+else if (count <= 10) {{
+    itemSize = 0.76;
+}}
+else if (count <= 12) {{
+    itemSize = 0.66;
+}}
+else {{
+    itemSize = 0.58;
+}}
 
-            draw.line(
-                [(0, y), (W, y)],
-                fill=(r, g, b)
+DATA.dishes.forEach(
+    (dish) => {{
+
+        const item =
+            document.createElement(
+                "div"
+            );
+
+        item.className = "item";
+
+        item.style.fontSize =
+            (itemSize * 100) + "%";
+
+        const name =
+            document.createElement(
+                "div"
+            );
+
+        name.className =
+            "item-name";
+
+        name.textContent =
+            dish.name;
+
+        const price =
+            document.createElement(
+                "div"
+            );
+
+        price.className =
+            "price";
+
+        price.textContent =
+            dish.price;
+
+        item.appendChild(name);
+
+        item.appendChild(price);
+
+        menu.appendChild(item);
+    }}
+);
+
+
+/*
+    توليد صورة حقيقية
+    1080 × 1920
+*/
+
+async function createStoryBlob() {{
+
+    await document.fonts.ready;
+
+    const source =
+        document.getElementById(
+            "story"
+        );
+
+    const canvas =
+        document.createElement(
+            "canvas"
+        );
+
+    canvas.width = 1080;
+    canvas.height = 1920;
+
+    const ctx =
+        canvas.getContext("2d");
+
+    /*
+        background
+    */
+
+    const gradient =
+        ctx.createLinearGradient(
+            0,
+            0,
+            1080,
+            1920
+        );
+
+    gradient.addColorStop(
+        0,
+        "#350000"
+    );
+
+    gradient.addColorStop(
+        .5,
+        "#680000"
+    );
+
+    gradient.addColorStop(
+        1,
+        "#970f0f"
+    );
+
+    ctx.fillStyle = gradient;
+
+    ctx.fillRect(
+        0,
+        0,
+        1080,
+        1920
+    );
+
+    /*
+        decorative circles
+    */
+
+    ctx.globalAlpha = .10;
+
+    ctx.beginPath();
+
+    ctx.arc(
+        130,
+        120,
+        180,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fillStyle = "#D4AF37";
+
+    ctx.fill();
+
+    ctx.globalAlpha = 1;
+
+    /*
+        border
+    */
+
+    ctx.strokeStyle =
+        "#D4AF37";
+
+    ctx.lineWidth = 8;
+
+    ctx.roundRect(
+        22,
+        22,
+        1036,
+        1876,
+        48
+    );
+
+    ctx.stroke();
+
+
+    /*
+        helpers
+    */
+
+    function roundedRect(
+        x,
+        y,
+        w,
+        h,
+        r,
+        color
+    ) {{
+
+        ctx.fillStyle = color;
+
+        ctx.beginPath();
+
+        ctx.roundRect(
+            x,
+            y,
+            w,
+            h,
+            r
+        );
+
+        ctx.fill();
+    }}
+
+
+    function drawCenteredText(
+        text,
+        x,
+        y,
+        font,
+        color
+    ) {{
+
+        ctx.font = font;
+
+        ctx.fillStyle = color;
+
+        ctx.textAlign = "center";
+
+        ctx.direction = "rtl";
+
+        ctx.fillText(
+            text,
+            x,
+            y
+        );
+    }}
+
+
+    /*
+        Header
+    */
+
+    drawCenteredText(
+        "🍲 مطعم دار الخليفي",
+        540,
+        145,
+        "900 68px Tajawal",
+        "#FFFFFF"
+    );
+
+    drawCenteredText(
+        "مكناس • الزيتون",
+        540,
+        205,
+        "700 34px Tajawal",
+        "#E9CF78"
+    );
+
+    ctx.strokeStyle =
+        "#D4AF37";
+
+    ctx.lineWidth = 3;
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        130,
+        270
+    );
+
+    ctx.lineTo(
+        950,
+        270
+    );
+
+    ctx.stroke();
+
+
+    drawCenteredText(
+        DATA.day,
+        540,
+        345,
+        "900 48px Tajawal",
+        "#FFFFFF"
+    );
+
+
+    /*
+        Menu
+    */
+
+    const count =
+        DATA.dishes.length;
+
+    const top = 400;
+
+    const bottom = 1550;
+
+    const availableHeight =
+        bottom - top;
+
+    let gap = 18;
+
+    let itemHeight =
+        (
+            availableHeight -
+            gap * Math.max(
+                0,
+                count - 1
             )
+        ) / Math.max(
+            1,
+            count
+        );
 
-        # Gold border
-        draw.rounded_rectangle(
-            (20, 20, W-20, H-20),
-            radius=45,
-            outline="#D4AF37",
-            width=7
-        )
+    /*
+        الحفاظ على حجم معقول
+    */
 
-        title_font = get_font(66, True)
-        subtitle_font = get_font(34, True)
-        day_font = get_font(48, True)
-        item_font = get_font(31, True)
-        price_font = get_font(28, True)
-        footer_font = get_font(30, True)
-
-        # Title
-        draw.text(
-            (W//2, 110),
-            "مطعم دار الخليفي",
-            font=title_font,
-            fill="white",
-            anchor="ma"
-        )
-
-        draw.text(
-            (W//2, 190),
-            "مكناس • الزيتون",
-            font=subtitle_font,
-            fill="#E7CA72",
-            anchor="ma"
-        )
-
-        draw.line(
-            (100, 255, W-100, 255),
-            fill="#D4AF37",
-            width=3
-        )
-
-        draw.text(
-            (W//2, 320),
-            f"منيو {selected_day}",
-            font=day_font,
-            fill="white",
-            anchor="ma"
-        )
-
-        y = 410
-
-        max_items = 8
-
-        visible = available_dishes[:max_items]
-
-        for d in visible:
-
-            box_h = 125
-
-            draw.rounded_rectangle(
-                (70, y, W-70, y+box_h),
-                radius=22,
-                fill="white"
+    itemHeight =
+        Math.max(
+            72,
+            Math.min(
+                145,
+                itemHeight
             )
+        );
 
-            name = d["name"]
+    /*
+        إذا كان عدد الأطباق كبير
+        نقلل gap
+    */
 
-            if len(name) > 32:
-                name = name[:31] + "…"
+    if (count >= 10) {{
+        gap = 10;
+    }}
 
-            draw.text(
-                (W-100, y+box_h//2),
+    if (count >= 13) {{
+        gap = 7;
+        itemHeight = 70;
+    }}
+
+    let y = top;
+
+    DATA.dishes.forEach(
+        (dish, index) => {{
+
+            roundedRect(
+                75,
+                y,
+                930,
+                itemHeight,
+                20,
+                "#FFFFFF"
+            );
+
+            /*
+                الاسم
+            */
+
+            let fontSize = 31;
+
+            if (count >= 8) {{
+                fontSize = 27;
+            }}
+
+            if (count >= 11) {{
+                fontSize = 23;
+            }}
+
+            if (count >= 14) {{
+                fontSize = 20;
+            }}
+
+            ctx.font =
+                "800 " +
+                fontSize +
+                "px Tajawal";
+
+            ctx.fillStyle =
+                "#202020";
+
+            ctx.textAlign =
+                "right";
+
+            ctx.direction =
+                "rtl";
+
+            let name =
+                dish.name;
+
+            /*
+                إذا كان الاسم طويل جداً
+                نقصه بطريقة محسوبة
+            */
+
+            while (
+                ctx.measureText(
+                    name
+                ).width > 690 &&
+                name.length > 10
+            ) {{
+                name =
+                    name.substring(
+                        0,
+                        name.length - 1
+                    );
+            }}
+
+            if (
+                name !== dish.name
+            ) {{
+                name += "…";
+            }}
+
+            ctx.fillText(
                 name,
-                font=item_font,
-                fill="#222222",
-                anchor="rm"
-            )
-
-            price_text = d["price"]
-
-            draw.rounded_rectangle(
-                (90, y+25, 270, y+100),
-                radius=18,
-                fill="#8B0000"
-            )
-
-            draw.text(
-                (180, y+62),
-                price_text,
-                font=price_font,
-                fill="white",
-                anchor="mm"
-            )
-
-            y += 145
-
-        # Footer
-        draw.line(
-            (100, H-300, W-100, H-300),
-            fill="#D4AF37",
-            width=3
-        )
-
-        draw.text(
-            (W//2, H-245),
-            "🍽️ مرحباً بكم",
-            font=footer_font,
-            fill="white",
-            anchor="ma"
-        )
-
-        draw.text(
-            (W//2, H-190),
-            "📱 للطلب: 0775978088",
-            font=footer_font,
-            fill="white",
-            anchor="ma"
-        )
-
-        draw.text(
-            (W//2, H-110),
-            "دار الخليفي • مكناس",
-            font=get_font(24, True),
-            fill="#E7CA72",
-            anchor="ma"
-        )
-
-        output = io.BytesIO()
-
-        img.save(
-            output,
-            format="PNG",
-            optimize=True
-        )
-
-        output.seek(0)
-
-        return output
+                955,
+                y +
+                itemHeight / 2 +
+                fontSize / 3
+            );
 
 
-    story_image = create_story_image()
+            /*
+                السعر
+            */
 
-    # ========================================================
-    # SHARE / DOWNLOAD
-    # ========================================================
+            const priceWidth =
+                170;
 
-    st.markdown("""
+            const priceHeight =
+                Math.min(
+                    65,
+                    itemHeight - 20
+                );
+
+            const priceY =
+                y +
+                (
+                    itemHeight -
+                    priceHeight
+                ) / 2;
+
+            roundedRect(
+                95,
+                priceY,
+                priceWidth,
+                priceHeight,
+                15,
+                "#720000"
+            );
+
+            let priceFont =
+                26;
+
+            if (count >= 10) {{
+                priceFont = 22;
+            }}
+
+            drawCenteredText(
+                dish.price,
+                180,
+                priceY +
+                priceHeight / 2 +
+                priceFont / 3,
+                "900 " +
+                priceFont +
+                "px Tajawal",
+                "#FFFFFF"
+            );
+
+            y +=
+                itemHeight +
+                gap;
+        }}
+    );
+
+
+    /*
+        Footer
+    */
+
+    ctx.strokeStyle =
+        "#D4AF37";
+
+    ctx.lineWidth = 3;
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        130,
+        1690
+    );
+
+    ctx.lineTo(
+        950,
+        1690
+    );
+
+    ctx.stroke();
+
+
+    drawCenteredText(
+        "📍 مكناس - الزيتون",
+        540,
+        1750,
+        "700 30px Tajawal",
+        "#FFFFFF"
+    );
+
+    drawCenteredText(
+        "📱 للطلب: 0775978088",
+        540,
+        1810,
+        "800 30px Tajawal",
+        "#FFFFFF"
+    );
+
+
+    return new Promise(
+        resolve => {{
+            canvas.toBlob(
+                blob => resolve(blob),
+                "image/png",
+                1
+            );
+        }}
+    );
+}}
+
+
+/*
+    زر تحميل الصورة
+*/
+
+async function downloadStory() {{
+
+    const blob =
+        await createStoryBlob();
+
+    const url =
+        URL.createObjectURL(blob);
+
+    const a =
+        document.createElement(
+            "a"
+        );
+
+    a.href = url;
+
+    a.download =
+        "dar-lakhlifi-{selected_day}.png";
+
+    document.body.appendChild(a);
+
+    a.click();
+
+    a.remove();
+
+    URL.revokeObjectURL(url);
+}}
+
+
+/*
+    مشاركة الصورة الحقيقية
+*/
+
+async function shareStory() {{
+
+    const blob =
+        await createStoryBlob();
+
+    const file =
+        new File(
+            [
+                blob
+            ],
+            "dar-lakhlifi-{selected_day}.png",
+            {{
+                type:
+                    "image/png"
+            }}
+        );
+
+    if (
+        navigator.share &&
+        navigator.canShare &&
+        navigator.canShare({{
+            files: [file]
+        }})
+    ) {{
+
+        try {{
+
+            await navigator.share({{
+                title:
+                    "منيو دار الخليفي",
+
+                text:
+                    "منيو اليوم 🍲",
+
+                files:
+                    [file]
+            }});
+
+        }} catch (error) {{
+
+            console.log(
+                "Share cancelled",
+                error
+            );
+
+        }}
+
+    }} else {{
+
+        await downloadStory();
+
+        alert(
+            "المتصفح لا يدعم مشاركة الصور مباشرة. تم تحميل الصورة، ويمكنك مشاركتها من الهاتف."
+        );
+    }}
+}}
+
+</script>
+
+</body>
+</html>
+"""
+
+
+# =========================================================
+# عرض الـ STORY
+# =========================================================
+
+st.components.v1.html(
+    story_component,
+    height=1050,
+    scrolling=True
+)
+
+
+# =========================================================
+# أزرار المشاركة
+# =========================================================
+
+st.markdown(
+    """
     <div style="
         background:white;
-        padding:22px;
-        border-radius:20px;
-        margin-top:25px;
-        border:1px solid #eee;
+        border-radius:22px;
+        padding:24px;
+        margin-top:20px;
+        border:1px solid #ece8df;
+        box-shadow:0 8px 30px rgba(0,0,0,.04);
     ">
 
         <div style="
+            color:#470000;
             font-size:21px;
             font-weight:900;
-            color:#450000;
         ">
-            📲 مشاركة الـStory
+            📲 نشر الـStory
         </div>
 
         <div style="
             color:#777;
             font-size:14px;
-            margin-top:5px;
+            margin-top:6px;
             line-height:1.7;
         ">
-            الصورة جاهزة بحجم 1080×1920.
-            اضغط على مشاركة الصورة من الهاتف لاختيار
-            WhatsApp أو Instagram أو أي تطبيق يدعم مشاركة الصور.
+            الصورة مصممة أصلاً بمقاس
+            1080 × 1920 بنسبة 9:16،
+            وهي نفس النسبة المناسبة للـInstagram Story
+            وWhatsApp Status.
         </div>
 
     </div>
-    """, unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True
+)
 
-    share_col1, share_col2 = st.columns(2)
 
-    with share_col1:
+share_html = """
+<script>
 
-        st.download_button(
-            label="⬇️ تحميل صورة Story",
-            data=story_image,
-            file_name=f"dar_lakhlifi_{selected_day}.png",
-            mime="image/png",
-            use_container_width=True
-        )
+async function shareFromParent() {
 
-    with share_col2:
+    /*
+        هذه الدالة ستبحث عن
+        iframe الخاص بالـStory
+        وتستعمل دالة المشاركة
+        الموجودة داخله.
+    */
 
-        # Rewind BytesIO for base64
-        story_image.seek(0)
+    try {
 
-        image_b64 = base64.b64encode(
-            story_image.read()
-        ).decode()
+        const frames =
+            window.parent.document
+            .querySelectorAll("iframe");
 
-        share_html = f"""
-        <button
-            onclick="shareStory()"
-            style="
-                width:100%;
-                min-height:45px;
-                border:none;
-                border-radius:12px;
-                background:linear-gradient(135deg,#8B0000,#B22222);
-                color:white;
-                font-family:Tajawal,sans-serif;
-                font-size:16px;
-                font-weight:900;
-                cursor:pointer;
-            "
-        >
-            📲 مشاركة الصورة
-        </button>
+        for (
+            const frame of frames
+        ) {
 
-        <script>
-
-        async function shareStory() {{
-
-            try {{
-
-                const base64 = "{image_b64}";
-
-                const binary = atob(base64);
-
-                const bytes = new Uint8Array(binary.length);
-
-                for (let i = 0; i < binary.length; i++) {{
-                    bytes[i] = binary.charCodeAt(i);
-                }}
-
-                const blob = new Blob(
-                    [bytes],
-                    {{type:"image/png"}}
-                );
-
-                const file = new File(
-                    [blob],
-                    "dar_lakhlifi_{selected_day}.png",
-                    {{type:"image/png"}}
-                );
+            try {
 
                 if (
-                    navigator.share &&
-                    navigator.canShare &&
-                    navigator.canShare({{files:[file]}})
-                ) {{
+                    frame.contentWindow &&
+                    frame.contentWindow.shareStory
+                ) {
 
-                    await navigator.share({{
-                        title:"منيو دار الخليفي",
-                        text:"منيو اليوم من مطعم دار الخليفي 🍲",
-                        files:[file]
-                    }});
+                    await
+                    frame.contentWindow
+                    .shareStory();
 
-                }} else {{
+                    return;
+                }
 
-                    alert(
-                        "الهاتف أو المتصفح لا يدعم المشاركة المباشرة للصورة. استعمل زر تحميل الصورة."
-                    );
+            } catch(e) {}
 
-                }}
+        }
 
-            }} catch(error) {{
+        alert(
+            "استعمل زر تحميل الصورة إذا لم يدعم المتصفح المشاركة المباشرة."
+        );
 
-                console.log(error);
+    } catch(error) {
 
-            }}
+        console.log(error);
 
-        }}
+    }
+}
 
-        </script>
-        """
+async function downloadFromParent() {
 
-        st.components.v1.html(
-            share_html,
-            height=60
-        )
+    try {
 
-    # ========================================================
-    # IMPORTANT NOTE
-    # ========================================================
+        const frames =
+            window.parent.document
+            .querySelectorAll("iframe");
 
-    st.info(
-        "💡 من الهاتف: الأفضل تستعمل زر «مشاركة الصورة». "
-        "غادي يعطيك Share Sheet ديال الهاتف، ومن تما تختار التطبيق اللي بغيتي. "
-        "زر التحميل كيبقى حل مضمون إذا المتصفح منع المشاركة المباشرة."
-    )
+        for (
+            const frame of frames
+        ) {
 
-# ============================================================
-# FOOTER
-# ============================================================
+            try {
 
-st.markdown("""
-<div class="footer">
-    🍲 مطعم دار الخليفي — مكناس، الزيتون
-    <br>
-    © 2026 جميع الحقوق محفوظة
+                if (
+                    frame.contentWindow &&
+                    frame.contentWindow.downloadStory
+                ) {
+
+                    await
+                    frame.contentWindow
+                    .downloadStory();
+
+                    return;
+                }
+
+            } catch(e) {}
+
+        }
+
+    } catch(error) {
+
+        console.log(error);
+
+    }
+}
+
+</script>
+
+<div style="
+    display:flex;
+    gap:12px;
+">
+
+<button
+    onclick="shareFromParent()"
+    style="
+        flex:1;
+        min-height:52px;
+        border:none;
+        border-radius:15px;
+        background:
+            linear-gradient(
+                135deg,
+                #720000,
+                #A81717
+            );
+        color:white;
+        font-family:Tajawal,sans-serif;
+        font-size:16px;
+        font-weight:900;
+        cursor:pointer;
+    "
+>
+    📲 مشاركة الصورة
+</button>
+
+<button
+    onclick="downloadFromParent()"
+    style="
+        flex:1;
+        min-height:52px;
+        border:none;
+        border-radius:15px;
+        background:#222;
+        color:white;
+        font-family:Tajawal,sans-serif;
+        font-size:16px;
+        font-weight:900;
+        cursor:pointer;
+    "
+>
+    ⬇️ تحميل PNG
+</button>
+
 </div>
-""", unsafe_allow_html=True)
+"""
+
+st.components.v1.html(
+    share_html,
+    height=75
+)
+
+
+# =========================================================
+# FOOTER
+# =========================================================
+
+st.markdown(
+    """
+    <div style="
+        text-align:center;
+        color:#999;
+        font-size:13px;
+        margin-top:45px;
+        padding:20px;
+    ">
+        🍲 مطعم دار الخليفي — مكناس، الزيتون
+        <br>
+        المنيو اليومية • 2026
+    </div>
+    """,
+    unsafe_allow_html=True
+)
