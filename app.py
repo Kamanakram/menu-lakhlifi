@@ -1,14 +1,14 @@
 import streamlit as st
 import datetime
+import streamlit.components.v1 as components
 
 # إعدادات الصفحة
 st.set_page_config(page_title="دار الخليفي | المنيو اليومي", page_icon="🍲", layout="centered")
 
-# CSS الواجهة
+# CSS الأساسي للواجهة
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap');
-    
     html, body, [class*="css"] {
         font-family: 'Tajawal', sans-serif !important;
         direction: rtl;
@@ -22,7 +22,6 @@ st.markdown("""
         border-radius: 15px;
         text-align: center;
         margin-bottom: 20px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
     }
     .dish-card {
         background-color: white;
@@ -38,58 +37,6 @@ st.markdown("""
         border-radius: 10px;
         border: 1px solid #c2e0c2;
         margin-top: 20px;
-    }
-    
-    /* تنسيق كارت الستوري النظيف */
-    .story-container {
-        background: #8B0000;
-        padding: 25px;
-        border-radius: 20px;
-        border: 3px solid #D4AF37;
-        box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-        max-width: 400px;
-        margin: 0 auto;
-    }
-    .story-title {
-        color: white;
-        text-align: center;
-        font-size: 26px;
-        font-weight: 900;
-        margin-bottom: 5px;
-    }
-    .story-sub {
-        color: #D4AF37;
-        text-align: center;
-        font-size: 16px;
-        font-weight: 700;
-        margin-bottom: 20px;
-        border-bottom: 1px dashed #D4AF37;
-        padding-bottom: 10px;
-    }
-    .story-dish {
-        background: white;
-        color: #1A1A1A;
-        padding: 10px 15px;
-        border-radius: 10px;
-        margin-bottom: 8px;
-        font-weight: 700;
-        font-size: 15px;
-        display: flex;
-        justify-content: space-between;
-    }
-    .story-dish-price {
-        color: #8B0000;
-        background: #f0e6e6;
-        padding: 2px 8px;
-        border-radius: 5px;
-    }
-    .story-footer-text {
-        color: white;
-        text-align: center;
-        margin-top: 15px;
-        font-size: 14px;
-        border-top: 1px dashed rgba(255,255,255,0.3);
-        padding-top: 10px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -137,14 +84,13 @@ if 'custom_dishes' not in st.session_state:
         ]
     }
 
-# الوقت والتاريخ الحالي
 now = datetime.datetime.now()
 days_map = ["الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت", "الأحد"]
 today_name = days_map[now.weekday()]
 current_time_str = now.strftime("%H:%M")
 current_date_str = now.strftime("%Y-%m-%d")
 
-# الهيدر
+# Header
 st.markdown(f"""
     <div class='main-header'>
         <h1>مطعم دار الخليفي 🍲</h1>
@@ -153,7 +99,7 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# التحكم الجانبي
+# Sidebar
 st.sidebar.title("⚙️ لوحة التحكم")
 selected_day = st.sidebar.selectbox("اختر اليوم للعرض أو التعديل:", days_map, index=now.weekday())
 
@@ -166,7 +112,7 @@ manual_closed = st.sidebar.checkbox("🚨 تفعيل وضع العطلة للي�
 if manual_closed:
     st.error(f"🔴 **مطعم دار الخليفي فـ عطلة يوم {selected_day}. نلقاكم غداً إن شاء الله!**")
 else:
-    # إضافة طبق جديد
+    # إضافة طبق
     st.sidebar.markdown("---")
     st.sidebar.subheader("➕ إضافة طبق جديد:")
     new_dish_name = st.sidebar.text_input("اسم الطبق:")
@@ -217,7 +163,7 @@ else:
         </div>
     """, unsafe_allow_html=True)
 
-    # زر الواتساب المباشر
+    # زر الطلب المباشر
     st.write("---")
     st.markdown(f"""
         <a href="https://wa.me/{phone_number}?text=سلام%20دار%20الخليفي،%20بغيت%20نطلب%20من%20المنيو" target="_blank">
@@ -227,33 +173,76 @@ else:
         </a>
     """, unsafe_allow_html=True)
 
-    # عرض بطاقة الستوري الجاهزة
+    # بطاقة الستوري المستقلة (حجم الستوري 9:16 المظبوط)
     st.write("---")
-    st.subheader("📱 بطاقة الستوري (جاهزة للسكرين شوت)")
-    st.caption("هذه البطاقة تتحدث أوتوماتيكياً مع أي طبق تضيفه أو تحذفه. يمكنك أخذ سكرين شوت لها مباشرة:")
-    
-    # رأس البطاقة
-    st.markdown(f"""
-        <div class='story-container'>
-            <div class='story-title'>مطعم دار الخليفي 🍲</div>
-            <div class='story-sub'>قائمة أطباق يوم {selected_day}</div>
-    """, unsafe_allow_html=True)
-    
-    # الأطباق المتوفرة فقط
+    st.subheader("📱 بطاقة الستوري الاحترافية (جاهزة للتصوير)")
+    st.caption("هاد البطاقة معزولة بعبار الستوري الرسمي (Instagram & WhatsApp). خد ليها سكرين شوت نيشان:")
+
+    # بناء الأطباق
+    items_html = ""
     for d in dishes:
         if d.get('available', True):
-            st.markdown(f"""
-                <div class='story-dish'>
-                    <span>{d['name']}</span>
-                    <span class='story-dish-price'>{d['price']}</span>
-                </div>
-            """, unsafe_allow_html=True)
-            
-    # أسفل البطاقة
-    st.markdown(f"""
-            <div class='story-footer-text'>
+            items_html += f"""
+            <div style="background: white; color: #1A1A1A; padding: 10px 14px; border-radius: 10px; margin-bottom: 8px; font-weight: bold; font-size: 14px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <span>{d['name']}</span>
+                <span style="color: #8B0000; background: #f0e6e6; padding: 3px 8px; border-radius: 6px; font-size: 13px;">{d['price']}</span>
+            </div>
+            """
+
+    story_full_html = f"""
+    <!DOCTYPE html>
+    <html dir="rtl">
+    <head>
+        <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@700;900&display=swap" rel="stylesheet">
+        <style>
+            body {{ font-family: 'Tajawal', sans-serif; margin: 0; padding: 10px; background: transparent; display: flex; justify-content: center; }}
+            .card {{
+                width: 340px;
+                background: linear-gradient(180deg, #8B0000 0%, #5A0000 100%);
+                border: 3px solid #D4AF37;
+                border-radius: 20px;
+                padding: 20px;
+                box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+                box-sizing: border-box;
+            }}
+            .title {{ color: white; text-align: center; font-size: 24px; font-weight: 900; margin: 0; }}
+            .sub {{ color: #D4AF37; text-align: center; font-size: 15px; font-weight: bold; margin-top: 5px; margin-bottom: 15px; border-bottom: 1px dashed #D4AF37; padding-bottom: 8px; }}
+            .footer {{ color: white; text-align: center; font-size: 13px; margin-top: 15px; border-top: 1px dashed rgba(255,255,255,0.3); padding-top: 10px; }}
+            .phone-btn {{ background: #25D366; color: white; padding: 6px 12px; border-radius: 15px; display: inline-block; font-weight: bold; margin-top: 5px; font-size: 12px; }}
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h2 class="title">مطعم دار الخليفي 🍲</h2>
+            <div class="sub">قائمة أطباق يوم {selected_day}</div>
+            {items_html}
+            <div class="footer">
                 📍 مكناس - الزيتون<br>
-                <b>📱 للطلب المباشر: 0775978088</b>
+                <div class="phone-btn">📱 للطلب: 0775978088</div>
             </div>
         </div>
-    """, unsafe_allow_html=True)
+    </body>
+    </html>
+    """
+
+    # عرض البطاقة داخل إطار محمي
+    components.html(story_full_html, height=520, scrolling=True)
+
+    # أزرار البارطاج المباشر
+    st.write("---")
+    st.subheader("🔗 خيارات المشاركة المباشرة:")
+    col_w, col_i = st.columns(2)
+    
+    with col_w:
+        wa_share_url = f"https://api.whatsapp.com/send?text=سلام،%20شوف%20منيو%20اليوم%20فـ%20مطعم%20دار%20الخليفي%20(مكناس%20الزيتون):%20{app_url}"
+        st.markdown(f"""
+            <a href="{wa_share_url}" target="_blank">
+                <button style="background-color: #25D366; color: white; padding: 12px; border: none; border-radius: 8px; width: 100%; font-weight: bold; cursor: pointer;">
+                    📲 نبارطاجي الرابط فـ WhatsApp
+                </button>
+            </a>
+        """, unsafe_allow_html=True)
+        
+    with col_i:
+        st.code(app_url, language=None)
+        st.caption("نسخ الرابط لإضافته كـ Link Sticker فـ Instagram Story.")
